@@ -73,6 +73,7 @@ class WebTech():
         self.header = {'User-Agent': self.USER_AGENT}
 
         # self.data contains the data fetched from the request
+        # this object SHOULD be append-only and immutable after the scraping/whitelist process
         self.data = {
             'url': None,
             'html': None,
@@ -88,9 +89,17 @@ class WebTech():
             'headers': [],
         }
 
+        # TODO: scrape_url or scrape_from_file
         self.scrape_url(url)
+
         self.whitelist_data()
-        self.check_headers()
+
+        # Cycle through all the db entries and do all the checks
+        for tech in self.db["apps"]:
+            headers = self.db["apps"][tech].get("headers")
+            if headers:
+                self.check_headers(tech, headers)
+
         self.print_report()
 
     def scrape_url(self, url):
@@ -108,7 +117,6 @@ class WebTech():
         self.data['headers'] = response.headers
         self.data['cookies'] = response.cookies
 
-        #print(data)
         #soup = BeautifulSoup(response.text, 'html.parser')
         #print(soup)
 
@@ -128,42 +136,50 @@ class WebTech():
 
         # Set-Cookie needs a special treatment
 
-    def check_headers(self):
+    def check_html(self, tech, html):
+        """
+        Check if request html contains some database matches 
+        """
+
+    def check_headers(self, tech, headers):
         """
         Check if request headers match some database headers
         """
-        # Cycle through all the db entries
-        for tech in self.db["apps"]:
-            # Get the entry headers
-            headers = self.db["apps"][tech].get("headers")
-            if not headers:
+        # For every tech header check if there is a match in our target
+        for header in headers:
+            try:
+                # _store, hacky way to get the original key from a request.structures.CaseInsensitiveDict
+                real_header, content = self.data['headers']._store[header.lower()]
+            except KeyError:
+                # tech header not found, go ahead
                 continue
-            # For every tech header check if there is a match in our target
-            for header in headers:
+            # Parse the matching regex
+            attr, extra = parse_header_string(headers[header])
+            matches = re.search(attr, content, re.IGNORECASE)
+            # Attr is empty for a "generic" tech header
+            if attr is '' or matches is not None:
+                matched_tech = Tech(name=tech, version=None)
+                # Remove the matched header from the Custom Header list
                 try:
-                    # _store, hacky way to get the original key from a request.structures.CaseInsensitiveDict
-                    real_header, content = self.data['headers']._store[header.lower()]
-                except KeyError:
-                    # tech header not found, go ahead
-                    continue
-                # Parse the matching regex
-                attr, extra = parse_header_string(headers[header])
-                matches = re.search(attr, content, re.IGNORECASE)
-                # Attr is empty for a "generic" tech header
-                if attr is '' or matches is not None:
-                    matched_tech = Tech(name=tech, version=None)
-                    # Remove the matched header from the Custom Header list
-                    try:
-                        self.report['headers'].remove(real_header)
-                    except ValueError:
-                        pass
-                    # The version extra data is present
-                    if extra and extra['version']:
-                        if matches.group(1):
-                            matched_tech = matched_tech._replace(version=matches.group(1))
-                    self.report['tech'].add(matched_tech)
+                    self.report['headers'].remove(real_header)
+                except ValueError:
+                    pass
+                # The version extra data is present
+                if extra and extra['version']:
+                    if matches.group(1):
+                        matched_tech = matched_tech._replace(version=matches.group(1))
+                self.report['tech'].add(matched_tech)
+
+    def check_cookies(self, tech, cookies):
+        """
+        Check if request cookies match some database cookies
+        """
+
 
     def print_report(self):
+        """
+        Print a report
+        """
         print("Target URL: {}".format(self.data['url']))
         print("Detected technologies:")
         for tech in self.report['tech']:
@@ -177,4 +193,4 @@ class WebTech():
 
 wt = WebTech()
 wt.start("https://www.plesk.com/")
-wt.start("https://twentyfourteendemo.wordpress.com/")
+#wt.start("https://twentyfourteendemo.wordpress.com/")
