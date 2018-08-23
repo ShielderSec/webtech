@@ -15,6 +15,8 @@ from collections import namedtuple
 # TODO: change to a local import
 import database
 
+import encoder
+
 # Disable warning about Insecure SSL
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -162,20 +164,17 @@ class WebTech():
         """
         # By default we don't verify SSL certificates, we are only performing some useless GETs
         response = requests.get(url, headers=self.header, verify=False)
-        print("status: {}".format(response.status_code))
+        # print("status: {}".format(response.status_code))
 
         # TODO: switch-case for various response.status_code
 
         self.data['url'] = url
         self.data['html'] = response.text #.replace('\n','')
         self.data['headers'] = response.headers
-        print(self.data['headers'])
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
-        print(self.data['cookies'])
 
         self.parse_html_page()
 
-        print(self.data)
 
     def parse_file(self, path):
         """
@@ -185,7 +184,7 @@ class WebTech():
         """
         try:
             path = path.replace('file://','')
-            response = open(path).read().replace('\r\n','\n')
+            response = open(path, encoding="ISO-8859-1").read()
         except FileNotFoundError:
             print("Cannot open file {}, is it a file?".format(path))
             print("Trying with {}...".format("https://" + path))
@@ -221,8 +220,6 @@ class WebTech():
 
         self.parse_html_page()
 
-        print(self.data)
-
     def parse_html_page(self):
         """
         Parse HTML content to get meta tag and script-src
@@ -241,10 +238,9 @@ class WebTech():
 
         This function is useful for CMS/technologies that are not in the database
         """
-        for header in self.data['headers']:
-            # This is pretty stupid and need an alternative approach
-            if header.lower() not in self.COMMON_HEADERS:
-                self.report['headers'].append(header)
+        for key, value in self.data['headers'].items():
+            if key.lower() not in self.COMMON_HEADERS:
+                self.report['headers'].append({"name": key, "value": value})
 
     def check_html(self, tech, html):
         """
@@ -312,15 +308,14 @@ class WebTech():
             # TODO
             print("TODO")
         elif self.output_json:
-            print(json.dumps(self.report, sort_keys=True, indent=4))
+            print(json.dumps(self.report, sort_keys=True, indent=4, cls=encoder.Encoder))
         else:
             print("Target URL: {}".format(self.data['url']))
             if self.report['tech']:
                 print("Detected technologies:")
                 for tech in self.report['tech']:
                     print("\t- {} {}".format(tech.name, '' if tech.version is None else tech.version))
-
             if self.report['headers']:
                 print("Detected the following interesting custom headers:")
                 for header in self.report['headers']:
-                    print("\t- {}: {}".format(header, self.data['headers'].get(header)))
+                    print("\t- {}: {}".format(header["name"], header["value"]))
