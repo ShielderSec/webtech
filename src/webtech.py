@@ -215,6 +215,9 @@ class WebTech():
             print(parsed_cookies)
             self.data['cookies'] = {key: value.value for key, value in parsed_cookies.items()}
             print(self.data)
+            
+        self.data['meta'] = ''  # html meta tags
+        self.data['script'] = ''  # html script-src links
 
     def whitelist_data(self):
         """
