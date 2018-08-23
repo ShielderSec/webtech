@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from optparse import OptionParser
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -59,11 +58,11 @@ def get_random_user_agent():
 class WebTech():
     VERSION = 0.1
     USER_AGENT = "webtech/{}".format(VERSION)
-    COMMON_HEADERS = ['Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Cache-Control', 'Connection', 'Content-Encoding',
-                      'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'Expect-CT', 'Expires', 'Feature-Policy',
-                      'Keep-Alive', 'Last-Modified', 'Link', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie', 'Strict-Transport-Security',
-                      'Transfer-Encoding', 'Vary', 'X-Content-Security-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'X-WebKit-CSP',
-                      'X-XSS-Protection']
+    COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
+                      'Content-Encoding', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
+                      'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
+                      'Strict-Transport-Security', 'Transfer-Encoding', 'Vary', 'X-Cache', 'X-Cache-Hits', 'X-Content-Security-Policy',
+                      'X-Content-Type-Options', 'X-Frame-Options', 'X-Timer', 'X-WebKit-CSP', 'X-XSS-Protection']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
 
     # 'cats' tech categories
@@ -93,7 +92,7 @@ class WebTech():
             with open(options.urls_file) as f:
                 self.urls = f.readlines()
         if options.user_agent is not None:
-            self.USER_AGENT = options.user_agent 
+            self.USER_AGENT = options.user_agent
         if options.use_random_user_agent:
             self.USER_AGENT = get_random_user_agent()
         self.output_grep = options.output_grep
@@ -168,7 +167,7 @@ class WebTech():
         # TODO: switch-case for various response.status_code
 
         self.data['url'] = url
-        self.data['html'] = response.text
+        self.data['html'] = response.text #.replace('\n','')
         self.data['headers'] = response.headers
         print(self.data['headers'])
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
@@ -187,7 +186,7 @@ class WebTech():
         try:
             path = path.replace('file://','')
             response = open(path).read().replace('\r\n','\n')
-        except:
+        except FileNotFoundError:
             print("Cannot open file {}, is it a file?".format(path))
             print("Trying with {}...".format("https://" + path))
             return self.scrape_url("https://" + path)
@@ -228,12 +227,13 @@ class WebTech():
         """
         Parse HTML content to get meta tag and script-src
         """
-        #soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(self.data['html'], 'html.parser')
         #print(soup)
 
-        self.data['meta'] = ''  # html meta tags
-        self.data['script'] = ''  # html script-src links
-
+        # html meta tags
+        self.data['meta'] = [meta for meta in soup.findAll("meta")]
+        # html script-src links
+        self.data['script'] = [script.get('src') for script in soup.findAll("script", {"src": True})]
 
     def whitelist_data(self):
         """
