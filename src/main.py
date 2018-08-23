@@ -15,6 +15,9 @@ def main():
         "-u", "--urls", dest="urls",
         help="url(s) to scan", type="string", action="callback", callback=split_urls)
     parser.add_option(
+        "--ul", "--urls-file", dest="urls_list",
+        help="url(s) list file to scan", type="string")
+    parser.add_option(
         "--ua", "--user-agent", dest="user_agent",
         help="use this user agent")
     parser.add_option(
@@ -26,7 +29,7 @@ def main():
 
     (options, args) = parser.parse_args(sys.argv)
 
-    if options.urls is None:
+    if options.urls is None and options.urls_list is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()

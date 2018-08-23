@@ -5,7 +5,10 @@ import json
 import re
 import random
 import os
+from urllib.parse import urlparse
 from collections import namedtuple
+from types import SimpleNamespace
+from http.cookies import SimpleCookie
 
 # TODO: change to a local import
 import database
@@ -53,11 +56,11 @@ def get_random_user_agent():
 class WebTech():
     VERSION = 0.1
     USER_AGENT = "webtech/{}".format(VERSION)
-    COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control',
-                      'Connection', 'Content-Encoding', 'Content-Length', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
-                      'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
-                      'Strict-Transport-Security', 'Transfer-Encoding', 'Vary', 'X-Cache', 'X-Cache-Hits', 'X-Content-Type-Options',
-                      'X-Frame-Options', 'X-Timer', 'X-XSS-Protection']
+    COMMON_HEADERS = ['Vary', 'Connection', 'Content-Type', 'Link', 'Content-Length', 'Date', 'Content-Encoding',
+                      'Set-Cookie', 'Last-Modified', 'Transfer-Encoding', 'Cache-Control', 'Strict-Transport-Security',
+                      'Expect-CT', 'X-Content-Type-Options', 'Feature-Policy', 'Referrer-Policy', 'X-Frame-Options',
+                      'X-XSS-Protection', 'Expires', 'Pragma', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Methods',
+                      'Keep-Alive', 'P3P', 'Content-Security-Policy', 'X-Content-Security-Policy', 'X-WebKit-CSP']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
 
     # 'cats' tech categories
@@ -81,7 +84,11 @@ class WebTech():
             self.db_file = database.DATABASE_FILE
         with open(self.db_file) as f:
             self.db = json.load(f)
-        self.urls = options.urls
+        if options.urls is not None:
+            self.urls = options.urls
+        if options.urls_file is not None:
+            with open(options.urls_file) as f:
+                self.urls = f.readlines()
         if options.user_agent is not None:
             self.USER_AGENT = options.user_agent 
         if options.use_random_user_agent:
@@ -112,7 +119,11 @@ class WebTech():
 
         # TODO: scrape_url or scrape_from_file
         for url in self.urls:
-            self.scrape_url(url)
+            parsed_url = urlparse(url)
+            if "http" in parsed_url.scheme:
+                self.scrape_url(url)
+            else:
+                self.scrape_file(url)
 
             self.whitelist_data()
 
@@ -137,8 +148,8 @@ class WebTech():
                     self.check_cookies(tech, cookies)
                 #if script:
                 #    self.check_headers(tech, headers)
-                if url:
-                    self.check_url(tech, url)
+                #if url:
+                #    self.check_headers(tech, headers)
 
             self.print_report()
 
@@ -155,6 +166,7 @@ class WebTech():
         self.data['url'] = url
         self.data['html'] = response.text
         self.data['headers'] = response.headers
+        print(self.data['headers'])
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
 
         #soup = BeautifulSoup(response.text, 'html.parser')
@@ -162,6 +174,47 @@ class WebTech():
 
         self.data['meta'] = ''  # html meta tags
         self.data['script'] = ''  # html script-src links
+
+    def scrape_file(self, path):
+        """
+        Scrape an HTTP response file and collects all the data that will be filtered afterwards
+        """
+        try:
+            path = path.replace('file://','')
+            response = open(path).read().replace('\r\n','\n')
+        except:
+            print("Cannot open file {}, is it a file?".format(path))
+            print("Trying with {}...".format("https://" + path))
+            return self.scrape_url("https://" + path)
+        self.data['url'] = path
+
+        headers_raw = response.split('\n\n', 1)[0]
+        parsed_headers = {}
+        for header in headers_raw.split('\n'):
+            # might be first row: HTTP/1.1 200
+            if ":" not in header:
+                continue
+            if "set-cookie" not in header.lower():
+                header_name = header.split(':',1)[0]
+                header_value = header.split(':',1)[1]
+                parsed_headers[header_name] = header_value
+        self.data['headers'] = parsed_headers
+        print(parsed_headers)
+
+        self.data['html'] = response.split('\n\n', 1)[1]
+
+        self.data['cookies'] = {}
+        if "set-cookie:" in headers_raw.lower():
+            set_cookie_headers = []
+            for header in headers_raw.split("\n"):
+                if "set-cookie:" in header.lower():
+                    set_cookie_headers.append(header)
+            set_cookie_headers = "\r\n".join(set_cookie_headers)
+            print(set_cookie_headers)
+            parsed_cookies = SimpleCookie(set_cookie_headers)
+            print(parsed_cookies)
+            self.data['cookies'] = {key: value.value for key, value in parsed_cookies.items()}
+            print(self.data)
 
     def whitelist_data(self):
         """
