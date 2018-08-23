@@ -56,7 +56,8 @@ class WebTech():
     COMMON_HEADERS = ['Vary', 'Connection', 'Content-Type', 'Link', 'Content-Length', 'Date', 'Content-Encoding',
                       'Set-Cookie', 'Last-Modified', 'Transfer-Encoding', 'Cache-Control', 'Strict-Transport-Security',
                       'Expect-CT', 'X-Content-Type-Options', 'Feature-Policy', 'Referrer-Policy', 'X-Frame-Options',
-                      'X-XSS-Protection']
+                      'X-XSS-Protection', 'Expires', 'Pragma', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Methods',
+                      'Keep-Alive', 'P3P']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
 
     # 'cats' tech categories
@@ -115,11 +116,29 @@ class WebTech():
 
             self.whitelist_data()
 
-            # Cycle through all the db entries and do all the checks
+            # Cycle through all the db technologies and do all the checks
+            # It's more efficent cycling all technologies and match against the target once for tech
+            # instead of cycling each target feature against every technology
             for tech in self.db["apps"]:
-                headers = self.db["apps"][tech].get("headers")
+                t = self.db["apps"][tech]
+                headers = t.get("headers")
+                html = t.get("html")
+                meta = t.get("meta")
+                cookies = t.get("cookies")
+                script = t.get("script")
+                url = t.get("url")
                 if headers:
                     self.check_headers(tech, headers)
+                #if html:
+                #    self.check_headers(tech, headers)
+                #if meta:
+                #    self.check_headers(tech, headers)
+                if cookies:
+                    self.check_cookies(tech, cookies)
+                #if script:
+                #    self.check_headers(tech, headers)
+                #if url:
+                #    self.check_headers(tech, headers)
 
             self.print_report()
 
@@ -136,7 +155,10 @@ class WebTech():
         self.data['url'] = url
         self.data['html'] = response.text
         self.data['headers'] = response.headers
-        self.data['cookies'] = response.cookies
+        self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
+
+        print(self.data['headers'])
+        print(self.data['cookies'])
 
         #soup = BeautifulSoup(response.text, 'html.parser')
         #print(soup)
@@ -195,7 +217,14 @@ class WebTech():
         """
         Check if request cookies match some database cookies
         """
-
+        for cookie in cookies:
+            # cookies in db are regexes so we must test them all
+            cookie = cookie.replace("*","") # FIX for "Fe26.2**" hapi.js cookie
+            for biscuit in self.data['cookies'].keys():
+                matches = re.search(cookie, biscuit, re.IGNORECASE)
+                if matches is not None:
+                    content = self.data['cookies'][biscuit]
+                    print(cookie, content)
 
     def print_report(self):
         """
