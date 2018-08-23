@@ -157,9 +157,6 @@ class WebTech():
         self.data['headers'] = response.headers
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
 
-        print(self.data['headers'])
-        print(self.data['cookies'])
-
         #soup = BeautifulSoup(response.text, 'html.parser')
         #print(soup)
 
@@ -223,8 +220,10 @@ class WebTech():
             for biscuit in self.data['cookies'].keys():
                 matches = re.search(cookie, biscuit, re.IGNORECASE)
                 if matches is not None:
-                    content = self.data['cookies'][biscuit]
-                    print(cookie, content)
+                    # TODO: check if cookie content matches. For now we don't care
+                    #content = self.data['cookies'][biscuit]
+                    matched_tech = Tech(name=tech, version=None)
+                    self.report['tech'].add(matched_tech)
 
     def print_report(self):
         """
