@@ -144,13 +144,13 @@ class WebTech():
                 if headers:
                     self.check_headers(tech, headers)
                 #if html:
-                #    self.check_headers(tech, headers)
-                #if meta:
-                #    self.check_headers(tech, headers)
+                #    self.check_html(tech, html)
+                if meta:
+                    self.check_meta(tech, meta)
                 if cookies:
                     self.check_cookies(tech, cookies)
                 #if script:
-                #    self.check_headers(tech, headers)
+                #    self.check_script(tech, script)
                 if url:
                     self.check_url(tech, url)
 
@@ -169,13 +169,9 @@ class WebTech():
         self.data['url'] = url
         self.data['html'] = response.text #.replace('\n','')
         self.data['headers'] = response.headers
-        print(self.data['headers'])
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
-        print(self.data['cookies'])
 
         self.parse_html_page()
-
-        print(self.data)
 
     def parse_file(self, path):
         """
@@ -221,17 +217,26 @@ class WebTech():
 
         self.parse_html_page()
 
-        print(self.data)
-
     def parse_html_page(self):
         """
         Parse HTML content to get meta tag and script-src
         """
         soup = BeautifulSoup(self.data['html'], 'html.parser')
-        #print(soup)
+
+        # optimize the meta in a fitting data-structure
+        page_meta = {}
+        for meta in soup.findAll("meta"):
+            if meta.get('name'):
+                # BUG: if there are meta with different content but with the same name
+                # they are going to be overwritten (last occurrence will last)...
+                # ¯\_(ツ)_/¯
+                # we also don't care about meta without name attr
+                # we default to an empty string so afterward we can detect meta that are present
+                page_meta[meta.get('name')] = meta.get('content', '')
 
         # html meta tags
-        self.data['meta'] = [meta for meta in soup.findAll("meta")]
+        # TODO: make a `dict` with "name" as key and the html as value so it's faster afterward
+        self.data['meta'] = page_meta
         # html script-src links
         self.data['script'] = [script.get('src') for script in soup.findAll("script", {"src": True})]
 
@@ -279,6 +284,31 @@ class WebTech():
                     if matches.group(1):
                         matched_tech = matched_tech._replace(version=matches.group(1))
                 self.report['tech'].add(matched_tech)
+
+    def check_meta(self, tech, meta):
+        """
+        Check if request meta from page's HTML contains some database matches 
+        """
+        for m in meta:
+            content = self.data['meta'].get(m)
+            # filter not-available meta
+            if content is None:
+                continue
+            attr, extra = parse_header_string(meta[m])
+            matches = re.search(attr, content, re.IGNORECASE)
+            # Attr is empty for a "generic" tech meta
+            if attr is '' or matches is not None:
+                matched_tech = Tech(name=tech, version=None)
+                # The version extra data is present
+                if extra and extra['version']:
+                    if matches.group(1):
+                        matched_tech = matched_tech._replace(version=matches.group(1))
+                self.report['tech'].add(matched_tech)
+
+    def check_script(self, tech, script):
+        """
+        Check if request script src from page's HTML contains some database matches 
+        """
 
     def check_cookies(self, tech, cookies):
         """
