@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
+import random
+import os
 from collections import namedtuple
 
 # TODO: change to a local import
@@ -38,6 +40,15 @@ def parse_header_string(string):
             extra[p.split(":")[0]] = p.split(":")[1]
         return parts[0], extra
 
+def get_random_user_agent():
+    """
+    Get a random user agent from a file
+    """
+
+    ua_file = os.path.join(os.path.realpath(os.path.dirname(__file__)), "ua.txt")
+    with open(ua_file) as f:
+        agents = f.readlines()
+        return random.choice(agents).strip()
 
 class WebTech():
     VERSION = 0.1
@@ -62,11 +73,20 @@ class WebTech():
     # 'script' check this pattern in scripts src
     # 'url' check this patter in url
 
-    def __init__(self):
-        with open(database.DATABASE_FILE) as f:
+    def __init__(self, options):
+        if options.db_file is not None:
+            self.db_file = options.db_file
+        else:
+            self.db_file = database.DATABASE_FILE
+        with open(self.db_file) as f:
             self.db = json.load(f)
+        self.urls = options.urls
+        if options.user_agent is not None:
+            self.USER_AGENT = options.user_agent 
+        if options.use_random_user_agent:
+            self.USER_AGENT = get_random_user_agent()
 
-    def start(self, url):
+    def start(self):
         """
         Start the engine, fetch an URL and report the findings
         """
@@ -90,17 +110,18 @@ class WebTech():
         }
 
         # TODO: scrape_url or scrape_from_file
-        self.scrape_url(url)
+        for url in self.urls:
+            self.scrape_url(url)
 
-        self.whitelist_data()
+            self.whitelist_data()
 
-        # Cycle through all the db entries and do all the checks
-        for tech in self.db["apps"]:
-            headers = self.db["apps"][tech].get("headers")
-            if headers:
-                self.check_headers(tech, headers)
+            # Cycle through all the db entries and do all the checks
+            for tech in self.db["apps"]:
+                headers = self.db["apps"][tech].get("headers")
+                if headers:
+                    self.check_headers(tech, headers)
 
-        self.print_report()
+            self.print_report()
 
     def scrape_url(self, url):
         """
@@ -189,8 +210,3 @@ class WebTech():
             print("Detected the following interesting custom headers:")
             for header in self.report['headers']:
                 print("\t- {}: {}".format(header, self.data['headers'].get(header)))
-
-
-wt = WebTech()
-wt.start("https://www.plesk.com/")
-#wt.start("https://twentyfourteendemo.wordpress.com/")

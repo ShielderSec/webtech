@@ -18,10 +18,10 @@ def main():
         "--ua", "--user-agent", dest="user_agent",
         help="use this user agent")
     parser.add_option(
-        "--rua", "--random-user-agent", action="store_true", dest="random_user_agent",
+        "--rua", "--random-user-agent", action="store_true", dest="use_random_user_agent",
         help="use a random user agent", default=False)
     parser.add_option(
-        "--db", "--database-file", dest="db",
+        "--db", "--database-file", dest="db_file",
         help="custom database file")
 
     (options, args) = parser.parse_args(sys.argv)
@@ -31,7 +31,6 @@ def main():
         parser.print_help()
         exit()
 
-    print(options)
     wt = WebTech(options)
     wt.start()
 
