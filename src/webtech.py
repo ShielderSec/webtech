@@ -130,7 +130,9 @@ class WebTech():
             'headers': [],
         }
 
+        self.output = {}
         for url in self.urls:
+            target_url = url
             parsed_url = urlparse(url)
             if "http" in parsed_url.scheme:
                 self.scrape_url(url)
@@ -163,7 +165,27 @@ class WebTech():
                 if url:
                     self.check_url(tech, url)
 
-            self.print_report()
+            self.output[target_url] = self.generate_report()
+
+            # clear cache
+            self.data = {
+                'url': None,
+                'html': None,
+                'headers': None,
+                'cookies': None,
+                'meta': None,
+                'script': None
+            }
+            self.report = {
+                'tech': set(),
+                'headers': [],
+            }
+
+        if self.output_json:
+            print(json.dumps(self.output, sort_keys=True, indent=4, cls=encoder.Encoder))
+        else:
+            for url in self.output:
+                print(self.output[url])
 
     def scrape_url(self, url):
         """
@@ -192,8 +214,8 @@ class WebTech():
             path = path.replace('file://','')
             response = open(path, encoding="ISO-8859-1").read()
         except FileNotFoundError:
-            print("Cannot open file {}, is it a file?".format(path))
-            print("Trying with {}...".format("https://" + path))
+            # print("Cannot open file {}, is it a file?".format(path))
+            # print("Trying with {}...".format("https://" + path))
             return self.scrape_url("https://" + path)
         self.data['url'] = path
 
@@ -367,22 +389,33 @@ class WebTech():
             # this tech is matched, GOTO next
             return
 
-    def print_report(self):
+    def generate_report(self):
         """
-        Print a report
+        Generate a report
         """
         if self.output_grep:
-            # TODO
-            print("TODO")
+            techs = ""
+            for tech in self.report['tech']:
+                if len(techs): techs += "//"
+                techs += "{}".format(tech.name + "/" + 'unknown' if tech.version is None else tech.version)
+
+            headers = ""
+            for header in self.report['headers']:
+                if len(headers): headers += "//"
+                headers += "{}".format(header["name"] + ":" + header["value"])
+
+            return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
         elif self.output_json:
-            print(json.dumps(self.report, sort_keys=True, indent=4, cls=encoder.Encoder))
+            return self.report
         else:
-            print("Target URL: {}".format(self.data['url']))
+            retval = ""
+            retval += "Target URL: {}\n".format(self.data['url'])
             if self.report['tech']:
-                print("Detected technologies:")
+                retval += "Detected technologies:\n"
                 for tech in self.report['tech']:
-                    print("\t- {} {}".format(tech.name, '' if tech.version is None else tech.version))
+                    retval += "\t- {} {}\n".format(tech.name, 'unknown' if tech.version is None else tech.version)
             if self.report['headers']:
-                print("Detected the following interesting custom headers:")
+                retval += "Detected the following interesting custom headers:\n"
                 for header in self.report['headers']:
-                    print("\t- {}: {}".format(header["name"], header["value"]))
+                    retval += "\t- {}: {}\n".format(header["name"], header["value"])
+            return retval
