@@ -14,7 +14,6 @@ from collections import namedtuple
 
 # TODO: change to a local import
 import database
-
 import encoder
 
 # Disable warning about Insecure SSL
@@ -24,7 +23,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 Tech = namedtuple('Tech', ['name', 'version'])
 
 
-def parse_header_string(string):
+def parse_regex_string(string):
     """
     Parse header string according to wappalizer DB format
 
@@ -56,6 +55,14 @@ def get_random_user_agent():
     with open(ua_file) as f:
         agents = f.readlines()
         return random.choice(agents).strip()
+
+def caseinsensitive_in(element, elist):
+    """
+    Given a list and an element, return true if the element is present in the list
+    in a case-insensitive flavor
+    """
+    return element.lower() in map(str.lower, elist)
+
 
 class WebTech():
     VERSION = 0.1
@@ -145,14 +152,14 @@ class WebTech():
                 url = t.get("url")
                 if headers:
                     self.check_headers(tech, headers)
-                #if html:
-                #    self.check_headers(tech, headers)
-                #if meta:
-                #    self.check_headers(tech, headers)
+                if html:
+                    self.check_html(tech, html)
+                if meta:
+                    self.check_meta(tech, meta)
                 if cookies:
                     self.check_cookies(tech, cookies)
-                #if script:
-                #    self.check_headers(tech, headers)
+                if script:
+                    self.check_script(tech, script)
                 if url:
                     self.check_url(tech, url)
 
@@ -174,7 +181,6 @@ class WebTech():
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
 
         self.parse_html_page()
-
 
     def parse_file(self, path):
         """
@@ -225,10 +231,20 @@ class WebTech():
         Parse HTML content to get meta tag and script-src
         """
         soup = BeautifulSoup(self.data['html'], 'html.parser')
-        #print(soup)
+
+        # optimize the meta in a fitting data-structure
+        page_meta = {}
+        for meta in soup.findAll("meta"):
+            if meta.get('name'):
+                # BUG: if there are meta with different content but with the same name
+                # they are going to be overwritten (last occurrence will last)...
+                # ¯\_(ツ)_/¯
+                # we also don't care about meta without name attr
+                # we default to an empty string so afterward we can detect meta that are present
+                page_meta[meta.get('name')] = meta.get('content', '')
 
         # html meta tags
-        self.data['meta'] = [meta for meta in soup.findAll("meta")]
+        self.data['meta'] = page_meta
         # html script-src links
         self.data['script'] = [script.get('src') for script in soup.findAll("script", {"src": True})]
 
@@ -244,7 +260,7 @@ class WebTech():
 
     def check_html(self, tech, html):
         """
-        Check if request html contains some database matches 
+        Check if request html contains some database matches
         """
 
     def check_headers(self, tech, headers):
@@ -260,21 +276,68 @@ class WebTech():
                 # tech header not found, go ahead
                 continue
             # Parse the matching regex
-            attr, extra = parse_header_string(headers[header])
+            attr, extra = parse_regex_string(headers[header])
             matches = re.search(attr, content, re.IGNORECASE)
             # Attr is empty for a "generic" tech header
             if attr is '' or matches is not None:
                 matched_tech = Tech(name=tech, version=None)
-                # Remove the matched header from the Custom Header list
-                try:
-                    self.report['headers'].remove(real_header)
-                except ValueError:
-                    pass
                 # The version extra data is present
                 if extra and extra['version']:
                     if matches.group(1):
                         matched_tech = matched_tech._replace(version=matches.group(1))
                 self.report['tech'].add(matched_tech)
+                # remove ALL the tech headers from the Custom Header list
+                # first make a list of tech headers
+                tech_headers = list(headers.keys())
+                # then filter them in target headers case insensitively
+                self.report['headers'] = list(filter(lambda h: not caseinsensitive_in(h['name'], tech_headers), self.report['headers']))
+                # this tech is matched, GOTO next
+                return
+
+    def check_meta(self, tech, meta):
+        """
+        Check if request meta from page's HTML contains some database matches
+        """
+        for m in meta:
+            content = self.data['meta'].get(m)
+            # filter not-available meta
+            if content is None:
+                continue
+            attr, extra = parse_regex_string(meta[m])
+            matches = re.search(attr, content, re.IGNORECASE)
+            # Attr is empty for a "generic" tech meta
+            if attr is '' or matches is not None:
+                matched_tech = Tech(name=tech, version=None)
+                # The version extra data is present
+                if extra and extra['version']:
+                    if matches.group(1):
+                        matched_tech = matched_tech._replace(version=matches.group(1))
+                self.report['tech'].add(matched_tech)
+                # this tech is matched, GOTO next
+                return
+
+    def check_script(self, tech, script):
+        """
+        Check if request script src from page's HTML contains some database matches
+        """
+        # FIX repair to some database inconsistencies
+        if isinstance(script, str):
+            script = [script]
+
+        for source in script:
+            attr, extra = parse_regex_string(source)
+            for src in self.data['script']:
+                matches = re.search(attr, src, re.IGNORECASE)
+                # Attr is empty for a "generic" tech meta
+                if attr is '' or matches is not None:
+                    matched_tech = Tech(name=tech, version=None)
+                    # The version extra data is present
+                    if extra and extra['version']:
+                        if matches.group(1):
+                            matched_tech = matched_tech._replace(version=matches.group(1))
+                    self.report['tech'].add(matched_tech)
+                    # this tech is matched, GOTO next
+                    return
 
     def check_cookies(self, tech, cookies):
         """
@@ -282,7 +345,7 @@ class WebTech():
         """
         for cookie in cookies:
             # cookies in db are regexes so we must test them all
-            cookie = cookie.replace("*","") # FIX for "Fe26.2**" hapi.js cookie
+            cookie = cookie.replace("*","") # FIX for "Fe26.2**" hapi.js cookie in the database
             for biscuit in self.data['cookies'].keys():
                 matches = re.search(cookie, biscuit, re.IGNORECASE)
                 if matches is not None:
@@ -290,6 +353,8 @@ class WebTech():
                     #content = self.data['cookies'][biscuit]
                     matched_tech = Tech(name=tech, version=None)
                     self.report['tech'].add(matched_tech)
+                    # this tech is matched, GOTO next
+                    return
 
     def check_url(self, tech, url):
         """
@@ -299,6 +364,8 @@ class WebTech():
         if matches is not None:
             matched_tech = Tech(name=tech, version=None)
             self.report['tech'].add(matched_tech)
+            # this tech is matched, GOTO next
+            return
 
     def print_report(self):
         """
