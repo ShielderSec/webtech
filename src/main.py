@@ -35,7 +35,7 @@ def main():
 
     (options, args) = parser.parse_args(sys.argv)
 
-    if options.urls is None and options.urls_list is None:
+    if options.urls is None and options.urls_file is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()

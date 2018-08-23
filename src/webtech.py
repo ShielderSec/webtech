@@ -59,11 +59,11 @@ def get_random_user_agent():
 class WebTech():
     VERSION = 0.1
     USER_AGENT = "webtech/{}".format(VERSION)
-    COMMON_HEADERS = ['Vary', 'Connection', 'Content-Type', 'Link', 'Content-Length', 'Date', 'Content-Encoding',
-                      'Set-Cookie', 'Last-Modified', 'Transfer-Encoding', 'Cache-Control', 'Strict-Transport-Security',
-                      'Expect-CT', 'X-Content-Type-Options', 'Feature-Policy', 'Referrer-Policy', 'X-Frame-Options',
-                      'X-XSS-Protection', 'Expires', 'Pragma', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Methods',
-                      'Keep-Alive', 'P3P', 'Content-Security-Policy', 'X-Content-Security-Policy', 'X-WebKit-CSP']
+    COMMON_HEADERS = ['Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Cache-Control', 'Connection', 'Content-Encoding',
+                      'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'Expect-CT', 'Expires', 'Feature-Policy',
+                      'Keep-Alive', 'Last-Modified', 'Link', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie', 'Strict-Transport-Security',
+                      'Transfer-Encoding', 'Vary', 'X-Content-Security-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'X-WebKit-CSP',
+                      'X-XSS-Protection']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
 
     # 'cats' tech categories
@@ -152,8 +152,8 @@ class WebTech():
                     self.check_cookies(tech, cookies)
                 #if script:
                 #    self.check_headers(tech, headers)
-                #if url:
-                #    self.check_headers(tech, headers)
+                if url:
+                    self.check_url(tech, url)
 
             self.print_report()
 
@@ -174,11 +174,7 @@ class WebTech():
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
         print(self.data['cookies'])
 
-        #soup = BeautifulSoup(response.text, 'html.parser')
-        #print(soup)
-
-        self.data['meta'] = ''  # html meta tags
-        self.data['script'] = ''  # html script-src links
+        self.parse_html_page()
 
         print(self.data)
 
@@ -224,10 +220,20 @@ class WebTech():
                     # ¯\_(ツ)_/¯
                     self.data['cookies'][cookie_name] = cookie_value
 
+        self.parse_html_page()
+
+        print(self.data)
+
+    def parse_html_page(self):
+        """
+        Parse HTML content to get meta tag and script-src
+        """
+        #soup = BeautifulSoup(response.text, 'html.parser')
+        #print(soup)
+
         self.data['meta'] = ''  # html meta tags
         self.data['script'] = ''  # html script-src links
 
-        print(self.data)
 
     def whitelist_data(self):
         """
@@ -306,7 +312,7 @@ class WebTech():
             # TODO
             print("TODO")
         elif self.output_json:
-            print(json.dumps(self.report, sort_keys=True, indent=4)
+            print(json.dumps(self.report, sort_keys=True, indent=4))
         else:
             print("Target URL: {}".format(self.data['url']))
             if self.report['tech']:
