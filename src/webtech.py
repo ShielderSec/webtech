@@ -216,10 +216,10 @@ class WebTech():
             for header in headers_raw.split("\n"):
                 if "set-cookie:" in header.lower():
                     # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
-                    cookie_name = header.split('=',1)[0].split(':')[1].strip() 
+                    cookie_name = header.split('=',1)[0].split(':')[1].strip()
                     # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
-                    cookie_value = header.split('=',1)[1].split(';',1)[0].strip() 
-                    # BUG: if there are cookies for different domains with the same name 
+                    cookie_value = header.split('=',1)[1].split(';',1)[0].strip()
+                    # BUG: if there are cookies for different domains with the same name
                     # they are going to be overwritten (last occurrence will last)...
                     # ¯\_(ツ)_/¯
                     self.data['cookies'][cookie_name] = cookie_value
