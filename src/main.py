@@ -26,6 +26,12 @@ def main():
     parser.add_option(
         "--db", "--database-file", dest="db_file",
         help="custom database file")
+    parser.add_option(
+        "--oj", "--json", action="store_true", dest="output_json",
+        help="output json-encoded report", default=False)
+    parser.add_option(
+        "--og", "--grep", action="store_true", dest="output_grep",
+        help="output grepable report", default=False)
 
     (options, args) = parser.parse_args(sys.argv)
 

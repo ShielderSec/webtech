@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from optparse import OptionParser
 import requests
 from bs4 import BeautifulSoup
@@ -5,10 +7,11 @@ import json
 import re
 import random
 import os
-from urllib.parse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 from collections import namedtuple
-from types import SimpleNamespace
-from http.cookies import SimpleCookie
 
 # TODO: change to a local import
 import database
@@ -93,6 +96,8 @@ class WebTech():
             self.USER_AGENT = options.user_agent 
         if options.use_random_user_agent:
             self.USER_AGENT = get_random_user_agent()
+        self.output_grep = options.output_grep
+        self.output_json = options.output_json
 
     def start(self):
         """
@@ -117,13 +122,12 @@ class WebTech():
             'headers': [],
         }
 
-        # TODO: scrape_url or scrape_from_file
         for url in self.urls:
             parsed_url = urlparse(url)
             if "http" in parsed_url.scheme:
                 self.scrape_url(url)
             else:
-                self.scrape_file(url)
+                self.parse_file(url)
 
             self.whitelist_data()
 
@@ -168,6 +172,7 @@ class WebTech():
         self.data['headers'] = response.headers
         print(self.data['headers'])
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
+        print(self.data['cookies'])
 
         #soup = BeautifulSoup(response.text, 'html.parser')
         #print(soup)
@@ -175,9 +180,13 @@ class WebTech():
         self.data['meta'] = ''  # html meta tags
         self.data['script'] = ''  # html script-src links
 
-    def scrape_file(self, path):
+        print(self.data)
+
+    def parse_file(self, path):
         """
-        Scrape an HTTP response file and collects all the data that will be filtered afterwards
+        Parse an HTTP response file and collects all the data that will be filtered afterwards
+
+        TODO: find a better way to do this :(
         """
         try:
             path = path.replace('file://','')
@@ -189,35 +198,36 @@ class WebTech():
         self.data['url'] = path
 
         headers_raw = response.split('\n\n', 1)[0]
-        parsed_headers = {}
+        parsed_headers = requests.structures.CaseInsensitiveDict()
         for header in headers_raw.split('\n'):
             # might be first row: HTTP/1.1 200
             if ":" not in header:
                 continue
             if "set-cookie" not in header.lower():
-                header_name = header.split(':',1)[0]
-                header_value = header.split(':',1)[1]
+                header_name = header.split(':',1)[0].strip()
+                header_value = header.split(':',1)[1].strip()
                 parsed_headers[header_name] = header_value
         self.data['headers'] = parsed_headers
-        print(parsed_headers)
 
         self.data['html'] = response.split('\n\n', 1)[1]
 
         self.data['cookies'] = {}
         if "set-cookie:" in headers_raw.lower():
-            set_cookie_headers = []
             for header in headers_raw.split("\n"):
                 if "set-cookie:" in header.lower():
-                    set_cookie_headers.append(header)
-            set_cookie_headers = "\r\n".join(set_cookie_headers)
-            print(set_cookie_headers)
-            parsed_cookies = SimpleCookie(set_cookie_headers)
-            print(parsed_cookies)
-            self.data['cookies'] = {key: value.value for key, value in parsed_cookies.items()}
-            print(self.data)
-            
+                    # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
+                    cookie_name = header.split('=',1)[0].split(':')[1].strip() 
+                    # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
+                    cookie_value = header.split('=',1)[1].split(';',1)[0].strip() 
+                    # BUG: if there are cookies for different domains with the same name 
+                    # they are going to be overwritten (last occurrence will last)...
+                    # ¯\_(ツ)_/¯
+                    self.data['cookies'][cookie_name] = cookie_value
+
         self.data['meta'] = ''  # html meta tags
         self.data['script'] = ''  # html script-src links
+
+        print(self.data)
 
     def whitelist_data(self):
         """
@@ -292,12 +302,19 @@ class WebTech():
         """
         Print a report
         """
-        print("Target URL: {}".format(self.data['url']))
-        print("Detected technologies:")
-        for tech in self.report['tech']:
-            print("\t- {} {}".format(tech.name, '' if tech.version is None else tech.version))
+        if self.output_grep:
+            # TODO
+            print("TODO")
+        elif self.output_json:
+            print(json.dumps(self.report, sort_keys=True, indent=4)
+        else:
+            print("Target URL: {}".format(self.data['url']))
+            if self.report['tech']:
+                print("Detected technologies:")
+                for tech in self.report['tech']:
+                    print("\t- {} {}".format(tech.name, '' if tech.version is None else tech.version))
 
-        if self.report['headers']:
-            print("Detected the following interesting custom headers:")
-            for header in self.report['headers']:
-                print("\t- {}: {}".format(header, self.data['headers'].get(header)))
+            if self.report['headers']:
+                print("Detected the following interesting custom headers:")
+                for header in self.report['headers']:
+                    print("\t- {}: {}".format(header, self.data['headers'].get(header)))
