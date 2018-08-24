@@ -108,7 +108,7 @@ class WebTech():
             self.USER_AGENT = get_random_user_agent()
         self.output_grep = options.output_grep
         self.output_json = options.output_json
-        self.request_file = options.request_file
+        self.request_files = options.request_files
 
     def start(self):
         """
@@ -135,8 +135,11 @@ class WebTech():
             'headers': [],
         }
 
-        if self.request_file is not None:
-            self.parse_http_request_file()
+        if self.request_files is not None:
+            for request_file in self.request_files:
+                self.request_file = request_file
+                self.parse_http_request_files()
+        self.request_file = None
 
         self.output = {}
         for url in self.urls:
@@ -257,7 +260,7 @@ class WebTech():
 
         self.parse_html_page()
 
-    def parse_http_request_file(self):
+    def parse_http_request_files(self):
         """
         Parse an HTTP request file and collects all the headers
 

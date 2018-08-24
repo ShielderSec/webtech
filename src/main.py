@@ -3,7 +3,7 @@ from optparse import OptionParser
 from webtech import WebTech
 import sys
 
-def split_urls(option, opt_str, value, parser):
+def split_on_comma(option, opt_str, value, parser):
     setattr(parser.values, option.dest, value.split(','))
 
 def main():
@@ -13,13 +13,13 @@ def main():
     parser = OptionParser()
     parser.add_option(
         "-u", "--urls", dest="urls",
-        help="url(s) to scan", type="string", action="callback", callback=split_urls)
+        help="url(s) to scan", type="string", action="callback", callback=split_on_comma)
     parser.add_option(
         "--ul", "--urls-file", dest="urls_file",
         help="url(s) list file to scan", type="string")
     parser.add_option(
-        "--rf", "--request-file", dest="request_file",
-        help="HTTP request file to replay", type="string")
+        "--rf", "--request-files", dest="request_files",
+        help="HTTP request file to replay", type="string", action="callback", callback=split_on_comma)
     parser.add_option(
         "--ua", "--user-agent", dest="user_agent",
         help="use this user agent")
@@ -38,7 +38,7 @@ def main():
     
     (options, args) = parser.parse_args(sys.argv)
 
-    if options.urls is None and options.urls_file is None and options.request_file is None:
+    if options.urls is None and options.urls_file is None and options.request_files is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()
