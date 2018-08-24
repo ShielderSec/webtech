@@ -6,10 +6,7 @@ import json
 import re
 import random
 import os
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from urllib.parse import urlparse
 from collections import namedtuple
 
 from . import database
@@ -158,6 +155,18 @@ class WebTech():
         self.output = {}
         for url in self.urls:
             # cache refresh
+            self.data = {
+                'url': None,
+                'html': None,
+                'headers': None,
+                'cookies': None,
+                'meta': None,
+                'script': None
+            }
+            self.report = {
+                'tech': set(),
+                'headers': [],
+            }
             self.headers = {'User-Agent': self.USER_AGENT}
             self.cookies = {}
             self.url = url
@@ -194,21 +203,7 @@ class WebTech():
                 if url:
                     self.check_url(tech, url)
 
-            self.output[self.url] = self.generate_report()
-
-            # clear cache
-            self.data = {
-                'url': None,
-                'html': None,
-                'headers': None,
-                'cookies': None,
-                'meta': None,
-                'script': None
-            }
-            self.report = {
-                'tech': set(),
-                'headers': [],
-            }
+            self.output[self.url] = self.generate_report()            
 
         if self.output_json:
             print(json.dumps(self.output, sort_keys=True, indent=4, cls=encoder.Encoder))
@@ -221,13 +216,13 @@ class WebTech():
         Scrape the target URL and collects all the data that will be filtered afterwards
         """
         # By default we don't verify SSL certificates, we are only performing some useless GETs
-        response = requests.get(self.url, headers=self.headers, cookies=self.cookies, verify=False)
+        response = requests.get(self.url, headers=self.headers, cookies=self.cookies, verify=False, allow_redirects=True)
         # print("status: {}".format(response.status_code))
 
         # TODO: switch-case for various response.status_code
 
         self.data['url'] = self.url
-        self.data['html'] = response.text #.replace('\n','')
+        self.data['html'] = response.text
         self.data['headers'] = response.headers
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
 
@@ -315,9 +310,6 @@ class WebTech():
         # GET / HTTP/1.1 -> /
         uri = request.split('\n', 1)[0].split(" ")[1]
 
-        # flag to know if the target is HTTPS or we should try both
-        only_https = False
-
         headers_raw = request.split('\n\n', 1)[0]
         for header in headers_raw.split('\n'):
             # might be first row: HTTP/1.1 200
@@ -328,10 +320,6 @@ class WebTech():
                     host = header.split(':', 1)[1].strip()
                 else:
                     header_name = header.split(':', 1)[0].strip()
-                    # TODO find a better way to find out this
-                    if "upgrade-insecure-requests" in header_name.lower():
-                        # BUG: this is never used (?)
-                        only_https = True
                     header_value = header.split(':', 1)[1].strip()
                     self.headers[header_name] = header_value
             else:
