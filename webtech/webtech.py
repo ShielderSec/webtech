@@ -97,8 +97,10 @@ class WebTech():
     def __init__(self, options):
         database.update_database()
 
-        with open(database.DATABASE_FILE) as f:
+        with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
+        with open(database.DATABASE_FILE) as f:
+            self.db = database.merge_databases(self.db, json.load(f))
 
         if options.db_file is not None:
             try:
