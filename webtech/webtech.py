@@ -384,11 +384,25 @@ class WebTech():
         """
         Check if request html contains some database matches
         """
+        if isinstance(html, str):
+            html = [html]
+
+        for source in html:
+            matches = re.search(source, self.data['html'], re.IGNORECASE)
+            if matches is not None:
+                matched_tech = Tech(name=tech, version=None)
+                self.report['tech'].add(matched_tech)
+                # this tech is matched, GOTO next
+                return
 
     def check_headers(self, tech, headers):
         """
         Check if request headers match some database headers
         """
+        if not isinstance(headers, dict):
+            print('Invalid headers data in database: {}'.format(headers))
+            exit(-1)
+
         # For every tech header check if there is a match in our target
         for header in headers:
             try:
@@ -482,12 +496,16 @@ class WebTech():
         """
         Check if request url match some database url rules
         """
-        matches = re.search(url, self.data['url'], re.IGNORECASE)
-        if matches is not None:
-            matched_tech = Tech(name=tech, version=None)
-            self.report['tech'].add(matched_tech)
-            # this tech is matched, GOTO next
-            return
+        if isinstance(url, str):
+            url = [url]
+
+        for source in url:
+            matches = re.search(source, self.data['url'], re.IGNORECASE)
+            if matches is not None:
+                matched_tech = Tech(name=tech, version=None)
+                self.report['tech'].add(matched_tech)
+                # this tech is matched, GOTO next
+                return
 
     def generate_report(self):
         """
