@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 
+
 class Encoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, set):

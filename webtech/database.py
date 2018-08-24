@@ -56,6 +56,7 @@ def merge_databases(db1, db2):
     for prop in db2:
         if merged_db.get(prop) is None:
             # if the element appears only in db2, add it to db1
+            # TODO: Validate type of db2[prop]
             merged_db[prop] = db2[prop]
         else:
             # both db contains the same property, merge its children
@@ -63,12 +64,16 @@ def merge_databases(db1, db2):
             for key, value in db2[prop].items():
                 if merged_db[prop].get(key) is None:
                     # db1's prop doesn't have this key, add it freely
-                    element[key] = value
+                    if type(value) in [str, list, dict]:
+                        element[key] = value
+                    else:
+                        raise ValueError('Wrong type in database: only "dict", "list" or "str" are permitted - element of type {}'.format(type(value).__name__))
                 else:
                     # both db's prop have the same key, pretty disappointing :(
                     element[key] = merge_elements(merged_db[prop][key], value)
             merged_db[prop] = element
 
+    print(merged_db['Wix'])
     return {'apps': merged_db}
 
 
@@ -91,7 +96,7 @@ def merge_elements(el1, el2):
             el1.update(el2)
             return el1
         else:
-            raise ValueError('Incompatible types when merging databases', 'element1 {}'.format(type(el1)), 'element2 {}'.format(type(el2)))
+            raise ValueError('Incompatible types when merging databases: element1 of type {}, element2 of type {}'.format(type(el1).__name__, type(el2).__name__))
     elif isinstance(el1, list):
         if isinstance(el2, list):
             # merge arrays and remove duplicates
@@ -102,11 +107,11 @@ def merge_elements(el1, el2):
             el1.append(el2)
             return list(set(el1))
         else:
-            raise ValueError('Incompatible types when merging databases', 'element1 {}'.format(type(el1)), 'element2 {}'.format(type(el2)))
+            raise ValueError('Incompatible types when merging databases: element1 of type {}, element2 of type {}'.format(type(el1).__name__, type(el2).__name__))
     elif isinstance(el1, str):
         if isinstance(el2, str):
             # make a list and remove duplicates
             return list(set([el1, el2]))
         else:
             return merge_elements(el2, el1)
-    raise ValueError('Wrong type in database: only "dict", "list" or "str" are permitted', 'element1 {}'.format(type(el1)))
+    raise ValueError('Wrong type in database: only "dict", "list" or "str" are permitted - element of type {}'.format(type(el1).__name__))

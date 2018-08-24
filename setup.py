@@ -3,10 +3,8 @@
 
 import io
 import os
-import sys
-from shutil import rmtree
 
-from setuptools import find_packages, setup, Command
+from setuptools import setup
 
 # Package meta-data.
 NAME = 'webtech'
@@ -56,13 +54,15 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=('tests',)),
+    packages=['webtech'],
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
 
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
+    entry_points={
+        'console_scripts': [
+            'webtech = webtech.__main__:main'
+        ]
+    },
     install_requires=REQUIRED,
     include_package_data=True,
     license='GPLv3',

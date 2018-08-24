@@ -12,9 +12,8 @@ except ImportError:
     from urlparse import urlparse
 from collections import namedtuple
 
-# TODO: change to a local import
-import database
-import encoder
+from .database import *
+from .encoder import *
 
 # Disable warning about Insecure SSL
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -46,15 +45,22 @@ def parse_regex_string(string):
             extra[p.split(":")[0]] = p.split(":")[1]
         return parts[0], extra
 
+
 def get_random_user_agent():
     """
     Get a random user agent from a file
     """
 
     ua_file = os.path.join(os.path.realpath(os.path.dirname(__file__)), "ua.txt")
-    with open(ua_file) as f:
-        agents = f.readlines()
-        return random.choice(agents).strip()
+    try:
+        with open(ua_file) as f:
+            agents = f.readlines()
+            return random.choice(agents).strip()
+    except FileNotFoundError as e:
+        print(e)
+        print('Please: Reinstall webtech correctly or provide a valid User-Agent list')
+        exit(-1)
+
 
 def caseinsensitive_in(element, elist):
     """
@@ -101,14 +107,21 @@ class WebTech():
             except FileNotFoundError as e:
                 print(e)
                 exit(-1)
+            except ValueError as e:
+                print(e)
+                exit(-1)
 
         if options.urls is not None:
             self.urls = options.urls
         else:
             self.urls = []
         if options.urls_file is not None:
-            with open(options.urls_file) as f:
-                self.urls = f.readlines()
+            try:
+                with open(options.urls_file) as f:
+                    self.urls = f.readlines()
+            except FileNotFoundError as e:
+                print(e)
+                exit(-1)
 
         if options.user_agent is not None:
             self.USER_AGENT = options.user_agent

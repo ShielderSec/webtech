@@ -1,10 +1,13 @@
 #!/usr/bin/env python
-from optparse import OptionParser
-from webtech import WebTech
 import sys
+from optparse import OptionParser
+
+from .webtech import WebTech
+
 
 def split_on_comma(option, opt_str, value, parser):
     setattr(parser.values, option.dest, value.split(','))
+
 
 def main():
     """
@@ -35,7 +38,7 @@ def main():
     parser.add_option(
         "--og", "--grep", action="store_true", dest="output_grep",
         help="output grepable report", default=False)
-    
+
     (options, args) = parser.parse_args(sys.argv)
 
     if options.urls is None and options.urls_file is None and options.request_files is None:
@@ -45,6 +48,7 @@ def main():
 
     wt = WebTech(options)
     wt.start()
+
 
 if __name__ == "__main__":
     main()
