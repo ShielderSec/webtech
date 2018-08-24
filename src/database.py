@@ -10,6 +10,9 @@ DAYS = 60 * 60 * 24
 
 
 def download_database_file(url):
+    """
+    Download the database file from the WAPPPALIZER repository
+    """
     print("Updating database...")
     r = requests.get(url, stream=True)
     with open(DATABASE_FILE, 'wb') as f:
@@ -20,7 +23,10 @@ def download_database_file(url):
 
 
 def update_database(args=None):
-    # option to force the DB update
+    """
+    Update the database if it's not present or too old
+    """
+    # TODO: option to force the DB update
 
     if not os.path.isfile(DATABASE_FILE):
         print("Database file not present.")
@@ -36,4 +42,71 @@ def update_database(args=None):
             download_database_file(WAPPALYZER_DATABASE)
 
 
-update_database()
+def merge_databases(db1, db2):
+    """
+    This helper function merge elements from two databases without overrding its elements
+    This function is not generic and *follow the Wappalyzer db scheme*
+    """
+    # Wappalyzer DB format must have an apps object
+    db1 = db1['apps']
+    db2 = db2['apps']
+
+    merged_db = db1
+
+    for prop in db2:
+        if merged_db.get(prop) is None:
+            # if the element appears only in db2, add it to db1
+            merged_db[prop] = db2[prop]
+        else:
+            # both db contains the same property, merge its children
+            element = merged_db[prop]
+            for key, value in db2[prop].items():
+                if merged_db[prop].get(key) is None:
+                    # db1's prop doesn't have this key, add it freely
+                    element[key] = value
+                else:
+                    # both db's prop have the same key, pretty disappointing :(
+                    element[key] = merge_elements(merged_db[prop][key], value)
+            merged_db[prop] = element
+
+    return {'apps': merged_db}
+
+
+def merge_elements(el1, el2):
+    """
+    Helper function to merge 2 element of different types
+    Note: el2 has priority over el1 and can override it
+
+    The possible cases are:
+    dict & dict -> merge keys and values
+    list & list -> merge arrays and remove duplicates
+    list & str  -> add str to array and remove duplicates
+    str & str   -> make a list and remove duplicates
+
+    all other cases will raise a ValueError exception
+    """
+    if isinstance(el1, dict):
+        if isinstance(el2, dict):
+            # merge keys and value
+            el1.update(el2)
+            return el1
+        else:
+            raise ValueError('Incompatible types when merging databases', 'element1 {}'.format(type(el1)), 'element2 {}'.format(type(el2)))
+    elif isinstance(el1, list):
+        if isinstance(el2, list):
+            # merge arrays and remove duplicates
+            el1.extend(el2)
+            return list(set(el1))
+        elif isinstance(el2, str):
+            # add string to array and remove duplicates
+            el1.append(el2)
+            return list(set(el1))
+        else:
+            raise ValueError('Incompatible types when merging databases', 'element1 {}'.format(type(el1)), 'element2 {}'.format(type(el2)))
+    elif isinstance(el1, str):
+        if isinstance(el2, str):
+            # make a list and remove duplicates
+            return list(set([el1, el2]))
+        else:
+            return merge_elements(el2, el1)
+    raise ValueError('Wrong type in database: only "dict", "list" or "str" are permitted', 'element1 {}'.format(type(el1)))
