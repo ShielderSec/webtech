@@ -12,8 +12,8 @@ except ImportError:
     from urlparse import urlparse
 from collections import namedtuple
 
-from .database import *
-from .encoder import *
+from . import database
+from . import encoder
 
 # Disable warning about Insecure SSL
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -130,15 +130,11 @@ class WebTech():
 
         self.output_grep = options.output_grep
         self.output_json = options.output_json
-        self.request_files = options.request_files
 
     def start(self):
         """
         Start the engine, fetch an URL and report the findings
         """
-        self.headers = {'User-Agent': self.USER_AGENT}
-        self.cookies = {}
-        self.url = None
 
         # self.data contains the data fetched from the request
         # this object SHOULD be append-only and immutable after the scraping/whitelist process
@@ -157,20 +153,18 @@ class WebTech():
             'headers': [],
         }
 
-        if self.request_files is not None:
-            for request_file in self.request_files:
-                self.request_file = request_file
-                self.parse_http_request_files()
-        self.request_file = None
-
         self.output = {}
         for url in self.urls:
+            # cache refresh
+            self.headers = {'User-Agent': self.USER_AGENT}
+            self.cookies = {}
             self.url = url
+
             parsed_url = urlparse(url)
             if "http" in parsed_url.scheme:
                 self.scrape_url()
             else:
-                self.parse_http_response_file()
+                self.parse_http_file()
 
             self.whitelist_data()
 
@@ -237,6 +231,24 @@ class WebTech():
 
         self.parse_html_page()
 
+    def parse_http_file(self):
+        """
+        Receives an HTTP request/response file and redirect to request/response parsing
+        """
+        try:
+            path = self.url.replace('file://','')
+            data = open(path, encoding="ISO-8859-1").read()
+        except FileNotFoundError:
+            # it's an URL without schema, not a file
+            self.url = "https://" + path
+            return self.scrape_url()
+
+        # e.g. HTTP/1.1 200 OK -> that's a response!
+        # does not check HTTP/1 since it might be HTTP/2 :)
+        if data.startswith("HTTP/"):
+            return self.parse_http_response_file()
+        return self.parse_http_request_file()
+
     def parse_http_response_file(self):
         """
         Parse an HTTP response file and collects all the data that will be filtered afterwards
@@ -247,10 +259,10 @@ class WebTech():
             path = self.url.replace('file://','')
             response = open(path, encoding="ISO-8859-1").read()
         except FileNotFoundError:
-            # print("Cannot open file {}, is it a file?".format(path))
-            # print("Trying with {}...".format("https://" + path))
-            self.url = "https://" + path
-            return self.scrape_url()
+            # unlikely, it means the file was there and then not anymore
+            print("HTTP response file not found anymore!")
+            exit()
+
         self.data['url'] = path
 
         headers_raw = response.split('\n\n', 1)[0]
@@ -282,7 +294,7 @@ class WebTech():
 
         self.parse_html_page()
 
-    def parse_http_request_files(self):
+    def parse_http_request_file(self):
         """
         Parse an HTTP request file and collects all the headers
 
@@ -290,10 +302,11 @@ class WebTech():
         TODO: should we support POST request?
         """
         try:
-            path = self.request_file.replace('file://','')
+            path = self.url.replace('file://','')
             request = open(path, encoding="ISO-8859-1").read()
         except FileNotFoundError:
-            print("HTTP Request file not found!")
+            # unlikely, it means the file was there and then not anymore
+            print("HTTP request file not found anymore!")
             exit()
 
         # GET / HTTP/1.1 -> /
@@ -329,10 +342,9 @@ class WebTech():
                     # ¯\_(ツ)_/¯
                     self.cookies[cookie_name] = cookie_value
 
-        # we don't know for sure if it's through HTTP or HTTPS
-        self.urls.append("https://" + host + uri)
-        if not only_https:
-            self.urls.append("http://" + host + uri)
+        # BUG: we don't know for sure if it's through HTTP or HTTPS
+        self.url = "https://" + host + uri
+        self.scrape_url()
 
     def parse_html_page(self):
         """
