@@ -89,21 +89,32 @@ class WebTech():
     # 'url' check this patter in url
 
     def __init__(self, options):
-        if options.db_file is not None:
-            self.db_file = options.db_file
-        else:
-            self.db_file = database.DATABASE_FILE
-        with open(self.db_file) as f:
+        database.update_database()
+
+        with open(database.DATABASE_FILE) as f:
             self.db = json.load(f)
+
+        if options.db_file is not None:
+            try:
+                with open(options.db_file) as f:
+                    self.db = database.merge_databases(self.db, json.load(f))
+            except FileNotFoundError as e:
+                print(e)
+                exit(-1)
+
         if options.urls is not None:
             self.urls = options.urls
+
         if options.urls_file is not None:
             with open(options.urls_file) as f:
                 self.urls = f.readlines()
+
         if options.user_agent is not None:
             self.USER_AGENT = options.user_agent
+
         if options.use_random_user_agent:
             self.USER_AGENT = get_random_user_agent()
+
         self.output_grep = options.output_grep
         self.output_json = options.output_json
 
