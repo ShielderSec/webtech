@@ -4,8 +4,9 @@ import requests
 
 
 INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
-DATABASE_FILE = os.path.join(INSTALLATION_DIR, "apps.json")
-WAPPALYZER_DATABASE = "https://raw.githubusercontent.com/AliasIO/Wappalyzer/master/src/apps.json"
+DATABASE_FILE = os.path.join(INSTALLATION_DIR, "webtech.json")
+WAPPALYZER_DATABASE_FILE = os.path.join(INSTALLATION_DIR, "apps.json")
+WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/Wappalyzer/master/src/apps.json"
 DAYS = 60 * 60 * 24
 
 
@@ -30,7 +31,7 @@ def update_database(args=None):
 
     if not os.path.isfile(DATABASE_FILE):
         print("Database file not present.")
-        download_database_file(WAPPALYZER_DATABASE)
+        download_database_file(WAPPALYZER_DATABASE_URL)
         # set timestamp in filename
     else:
         last_update = int(os.path.getmtime(DATABASE_FILE))
@@ -39,7 +40,7 @@ def update_database(args=None):
         if last_update < now - 30 * DAYS:
             print("Database file is older than 30 days.")
             os.remove(DATABASE_FILE)
-            download_database_file(WAPPALYZER_DATABASE)
+            download_database_file(WAPPALYZER_DATABASE_URL)
 
 
 def merge_databases(db1, db2):
@@ -73,7 +74,6 @@ def merge_databases(db1, db2):
                     element[key] = merge_elements(merged_db[prop][key], value)
             merged_db[prop] = element
 
-    print(merged_db['Wix'])
     return {'apps': merged_db}
 
 

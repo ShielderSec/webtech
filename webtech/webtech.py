@@ -12,8 +12,8 @@ except ImportError:
     from urlparse import urlparse
 from collections import namedtuple
 
-from .database import *
-from .encoder import *
+from . import database
+from . import encoder
 
 # Disable warning about Insecure SSL
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -97,8 +97,10 @@ class WebTech():
     def __init__(self, options):
         database.update_database()
 
-        with open(database.DATABASE_FILE) as f:
+        with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
+        with open(database.DATABASE_FILE) as f:
+            self.db = database.merge_databases(self.db, json.load(f))
 
         if options.db_file is not None:
             try:
