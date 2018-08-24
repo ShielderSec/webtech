@@ -21,9 +21,6 @@ def main():
         "--ul", "--urls-file", dest="urls_file",
         help="url(s) list file to scan", type="string")
     parser.add_option(
-        "--rf", "--request-files", dest="request_files",
-        help="HTTP request file to replay", type="string", action="callback", callback=split_on_comma)
-    parser.add_option(
         "--ua", "--user-agent", dest="user_agent",
         help="use this user agent")
     parser.add_option(
@@ -41,7 +38,7 @@ def main():
 
     (options, args) = parser.parse_args(sys.argv)
 
-    if options.urls is None and options.urls_file is None and options.request_files is None:
+    if options.urls is None and options.urls_file is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()
