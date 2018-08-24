@@ -97,6 +97,8 @@ class WebTech():
             self.db = json.load(f)
         if options.urls is not None:
             self.urls = options.urls
+        else:
+            self.urls = []
         if options.urls_file is not None:
             with open(options.urls_file) as f:
                 self.urls = f.readlines()
@@ -106,12 +108,15 @@ class WebTech():
             self.USER_AGENT = get_random_user_agent()
         self.output_grep = options.output_grep
         self.output_json = options.output_json
+        self.request_file = options.request_file
 
     def start(self):
         """
         Start the engine, fetch an URL and report the findings
         """
-        self.header = {'User-Agent': self.USER_AGENT}
+        self.headers = {'User-Agent': self.USER_AGENT}
+        self.cookies = {}
+        self.url = None
 
         # self.data contains the data fetched from the request
         # this object SHOULD be append-only and immutable after the scraping/whitelist process
@@ -130,14 +135,17 @@ class WebTech():
             'headers': [],
         }
 
+        if self.request_file is not None:
+            self.parse_http_request_file()
+
         self.output = {}
         for url in self.urls:
-            target_url = url
+            self.url = url
             parsed_url = urlparse(url)
             if "http" in parsed_url.scheme:
-                self.scrape_url(url)
+                self.scrape_url()
             else:
-                self.parse_file(url)
+                self.parse_http_response_file()
 
             self.whitelist_data()
 
@@ -165,7 +173,7 @@ class WebTech():
                 if url:
                     self.check_url(tech, url)
 
-            self.output[target_url] = self.generate_report()
+            self.output[self.url] = self.generate_report()
 
             # clear cache
             self.data = {
@@ -187,36 +195,37 @@ class WebTech():
             for url in self.output:
                 print(self.output[url])
 
-    def scrape_url(self, url):
+    def scrape_url(self):
         """
         Scrape the target URL and collects all the data that will be filtered afterwards
         """
         # By default we don't verify SSL certificates, we are only performing some useless GETs
-        response = requests.get(url, headers=self.header, verify=False)
+        response = requests.get(self.url, headers=self.headers, cookies=self.cookies, verify=False)
         # print("status: {}".format(response.status_code))
 
         # TODO: switch-case for various response.status_code
 
-        self.data['url'] = url
+        self.data['url'] = self.url
         self.data['html'] = response.text #.replace('\n','')
         self.data['headers'] = response.headers
         self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
 
         self.parse_html_page()
 
-    def parse_file(self, path):
+    def parse_http_response_file(self):
         """
         Parse an HTTP response file and collects all the data that will be filtered afterwards
 
         TODO: find a better way to do this :(
         """
         try:
-            path = path.replace('file://','')
+            path = self.url.replace('file://','')
             response = open(path, encoding="ISO-8859-1").read()
         except FileNotFoundError:
             # print("Cannot open file {}, is it a file?".format(path))
             # print("Trying with {}...".format("https://" + path))
-            return self.scrape_url("https://" + path)
+            self.url = "https://" + path
+            return self.scrape_url()
         self.data['url'] = path
 
         headers_raw = response.split('\n\n', 1)[0]
@@ -226,8 +235,8 @@ class WebTech():
             if ":" not in header:
                 continue
             if "set-cookie" not in header.lower():
-                header_name = header.split(':',1)[0].strip()
-                header_value = header.split(':',1)[1].strip()
+                header_name = header.split(':', 1)[0].strip()
+                header_value = header.split(':', 1)[1].strip()
                 parsed_headers[header_name] = header_value
         self.data['headers'] = parsed_headers
 
@@ -238,15 +247,67 @@ class WebTech():
             for header in headers_raw.split("\n"):
                 if "set-cookie:" in header.lower():
                     # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
-                    cookie_name = header.split('=',1)[0].split(':')[1].strip()
+                    cookie_name = header.split('=', 1)[0].split(':')[1].strip()
                     # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
-                    cookie_value = header.split('=',1)[1].split(';',1)[0].strip()
+                    cookie_value = header.split('=', 1)[1].split(';', 1)[0].strip()
                     # BUG: if there are cookies for different domains with the same name
                     # they are going to be overwritten (last occurrence will last)...
                     # ¯\_(ツ)_/¯
                     self.data['cookies'][cookie_name] = cookie_value
 
         self.parse_html_page()
+
+    def parse_http_request_file(self):
+        """
+        Parse an HTTP request file and collects all the headers
+
+        TODO: find a better way to do this :(
+        TODO: should we support POST request?
+        """
+        try:
+            path = self.request_file.replace('file://','')
+            request = open(path, encoding="ISO-8859-1").read()
+        except FileNotFoundError:
+            print("HTTP Request file not found!")
+            exit()
+
+        # GET / HTTP/1.1 -> /
+        uri = request.split('\n', 1)[0].split(" ")[1]
+
+        # flag to know if the target is HTTPS or we should try both
+        only_https = False
+
+        headers_raw = request.split('\n\n', 1)[0]
+        for header in headers_raw.split('\n'):
+            # might be first row: HTTP/1.1 200
+            if ":" not in header:
+                continue
+            if "cookie" not in header.lower():
+                if "host" in header.lower():
+                    host = header.split(':', 1)[1].strip()
+                else:
+                    header_name = header.split(':', 1)[0].strip()
+                    # TODO find a better way to find out this
+                    if "upgrade-insecure-requests" in header_name.lower():
+                        only_https = True
+                    header_value = header.split(':', 1)[1].strip()
+                    self.headers[header_name] = header_value
+            else:
+                # 'Cookie: dr=gonzo; mamm=ta; trmo=n'
+                cookie_value = header.split(":", 1)[1]
+                cookies = cookie_value.split(';')
+                for cookie in cookies:
+                    cookie_name = cookie.split("=", 1)[0].strip()
+                    cookie_value = cookie.split("=", 1)[1].strip()
+                    # BUG: if there are cookies for different domains with the same name
+                    # they are going to be overwritten (last occurrence will last)...
+                    # ¯\_(ツ)_/¯
+                    self.cookies[cookie_name] = cookie_value
+
+        # we don't know for sure if it's through HTTP or HTTPS
+        self.urls.append("https://" + host + uri)
+        if not only_https:
+            self.urls.append("http://" + host + uri)
 
     def parse_html_page(self):
         """
@@ -413,7 +474,7 @@ class WebTech():
             if self.report['tech']:
                 retval += "Detected technologies:\n"
                 for tech in self.report['tech']:
-                    retval += "\t- {} {}\n".format(tech.name, 'unknown' if tech.version is None else tech.version)
+                    retval += "\t- {} {}\n".format(tech.name, '' if tech.version is None else tech.version)
             if self.report['headers']:
                 retval += "Detected the following interesting custom headers:\n"
                 for header in self.report['headers']:

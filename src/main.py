@@ -18,6 +18,9 @@ def main():
         "--ul", "--urls-file", dest="urls_file",
         help="url(s) list file to scan", type="string")
     parser.add_option(
+        "--rf", "--request-file", dest="request_file",
+        help="HTTP request file to replay", type="string")
+    parser.add_option(
         "--ua", "--user-agent", dest="user_agent",
         help="use this user agent")
     parser.add_option(
@@ -32,10 +35,10 @@ def main():
     parser.add_option(
         "--og", "--grep", action="store_true", dest="output_grep",
         help="output grepable report", default=False)
-
+    
     (options, args) = parser.parse_args(sys.argv)
 
-    if options.urls is None and options.urls_file is None:
+    if options.urls is None and options.urls_file is None and options.request_file is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()
