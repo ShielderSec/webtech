@@ -74,9 +74,9 @@ class WebTech():
     VERSION = 0.1
     USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
-                      'Content-Encoding', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
+                      'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
                       'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
-                      'Strict-Transport-Security', 'Transfer-Encoding', 'Vary', 'X-Cache', 'X-Cache-Hits', 'X-Content-Security-Policy',
+                      'Strict-Transport-Security', 'Transfer-Encoding', 'Vary', 'X-Accel-Buffering', 'X-Cache', 'X-Cache-Hits', 'X-Content-Security-Policy',
                       'X-Content-Type-Options', 'X-Frame-Options', 'X-Timer', 'X-WebKit-CSP', 'X-XSS-Protection']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
 
@@ -265,6 +265,7 @@ class WebTech():
             print("HTTP response file not found anymore!")
             exit()
 
+        # BUG: path is not a reliable information. url matching will always fail
         self.data['url'] = path
 
         headers_raw = response.split('\n\n', 1)[0]
@@ -329,6 +330,7 @@ class WebTech():
                     header_name = header.split(':', 1)[0].strip()
                     # TODO find a better way to find out this
                     if "upgrade-insecure-requests" in header_name.lower():
+                        # BUG: this is never used (?)
                         only_https = True
                     header_value = header.split(':', 1)[1].strip()
                     self.headers[header_name] = header_value
