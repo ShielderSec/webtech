@@ -50,9 +50,7 @@ Options:
 
 ## Burp Integration
 
-Download Jython 2.7.1 from maven (*jython-standalone-2.7.1.jar*)
-
-***NOTE***: You *really* need **2.7.1 or newer**
+Download Jython 2.7.0 on Windows or 2.7.1 on GNU/Linux from maven below (*jython-standalone-2.7.1.jar*)
 
 [https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/](https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/)
 
