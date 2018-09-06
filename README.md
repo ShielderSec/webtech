@@ -48,6 +48,27 @@ Options:
 
 ```
 
+## Burp Integration
+
+Download Jython 2.7.1 from maven (*jython-standalone-2.7.1.jar*)
+
+***NOTE***: You *really* need **2.7.1 or newer**
+
+[https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/](https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/)
+
+In "Extender" > "Options" > "Python Environment":
+
+- Select the Jython jar location
+- Select as Module folder your system python2 folder (es. `/usr/local/lib/python2.7/dist-packages`)
+
+You can get the system module folder by executing something like:
+```python2 -c "import sys;print sys.path"```
+
+Finally, in "Extender" > "Extension":
+- Click "Add"
+- Select "py" as extension format
+- Select the `Burp-WebTech.py` file in this folder
+
 
 ## Resources for database matching
 

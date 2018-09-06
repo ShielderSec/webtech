@@ -9,6 +9,11 @@
       "headers": {
         "Alt-Svc": "quic"
       }
+    },
+    "IIS": {
+      "headers": {
+        "Server": "^(?:Microsoft-)?IIS(?:/([\\d.]+))?\\;version:\\1"
+      }
     }
   }
 }

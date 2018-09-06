@@ -1,46 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import requests
-from bs4 import BeautifulSoup
-import json
-import re
-import random
 import os
-from urllib.parse import urlparse
-from collections import namedtuple
+import json
+import random
+try:
+    from urlparse import urlparse
+except ImportError:  # For Python 3
+    from urllib.parse import urlparse
 
 from . import database
-from . import encoder
-
-# Disable warning about Insecure SSL
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-Tech = namedtuple('Tech', ['name', 'version'])
-
-
-def parse_regex_string(string):
-    """
-    Parse header string according to wappalizer DB format
-
-    strings follow the below format:
-    <string>[\\;version:\\\d][\\;confidence:\d]
-
-    "string" is a mandatory regex string followed by 0 or more parameters (key:value), can be empty
-    parameters are divided by a \\; sequence (a backslash followed by a semicolon)
-
-    examples of parameters are:
-    "version": indicate wich regex group store the version information
-    "confidence": indicate a rate of confidence
-    """
-    parts = string.split("\;")
-    if len(parts) == 1:
-        return parts[0], None
-    else:
-        extra = {}
-        for p in parts[1:]:
-            extra[p.split(":")[0]] = p.split(":")[1]
-        return parts[0], extra
+from .utils import Format, FileNotFoundException
+from .target import Target
 
 
 def get_random_user_agent():
@@ -53,21 +23,18 @@ def get_random_user_agent():
         with open(ua_file) as f:
             agents = f.readlines()
             return random.choice(agents).strip()
-    except FileNotFoundError as e:
+    except FileNotFoundException as e:
         print(e)
         print('Please: Reinstall webtech correctly or provide a valid User-Agent list')
         exit(-1)
 
 
-def caseinsensitive_in(element, elist):
-    """
-    Given a list and an element, return true if the element is present in the list
-    in a case-insensitive flavor
-    """
-    return element.lower() in map(str.lower, elist)
-
-
 class WebTech():
+    """
+    Main class. The orchestrator that decides what to do.
+
+    This class is the bridge between the tech's database and the Targets' data
+    """
     VERSION = 0.1
     USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
@@ -91,7 +58,7 @@ class WebTech():
     # 'script' check this pattern in scripts src
     # 'url' check this patter in url
 
-    def __init__(self, options):
+    def __init__(self, options=None):
         database.update_database()
 
         with open(database.WAPPALYZER_DATABASE_FILE) as f:
@@ -99,11 +66,17 @@ class WebTech():
         with open(database.DATABASE_FILE) as f:
             self.db = database.merge_databases(self.db, json.load(f))
 
+        # Output text only
+        self.output_format = Format.text
+
+        if options is None:
+            return
+
         if options.db_file is not None:
             try:
                 with open(options.db_file) as f:
                     self.db = database.merge_databases(self.db, json.load(f))
-            except FileNotFoundError as e:
+            except FileNotFoundException as e:
                 print(e)
                 exit(-1)
             except ValueError as e:
@@ -118,7 +91,7 @@ class WebTech():
             try:
                 with open(options.urls_file) as f:
                     self.urls = f.readlines()
-            except FileNotFoundError as e:
+            except FileNotFoundException as e:
                 print(e)
                 exit(-1)
 
@@ -127,403 +100,108 @@ class WebTech():
         if options.use_random_user_agent:
             self.USER_AGENT = get_random_user_agent()
 
-        self.output_grep = options.output_grep
-        self.output_json = options.output_json
+        if options.output_grep:
+            # Greppable output
+            self.output_format = Format.grep
+        elif options.output_json:
+            # JSON output
+            self.output_format = Format.json
 
     def start(self):
         """
         Start the engine, fetch an URL and report the findings
         """
-
-        # self.data contains the data fetched from the request
-        # this object SHOULD be append-only and immutable after the scraping/whitelist process
-        self.data = {
-            'url': None,
-            'html': None,
-            'headers': None,
-            'cookies': None,
-            'meta': None,
-            'script': None
-        }
-
-        # self.report contains the information about the technologies detected
-        self.report = {
-            'tech': set(),
-            'headers': [],
-        }
-
         self.output = {}
         for url in self.urls:
-            # cache refresh
-            self.data = {
-                'url': None,
-                'html': None,
-                'headers': None,
-                'cookies': None,
-                'meta': None,
-                'script': None
-            }
-            self.report = {
-                'tech': set(),
-                'headers': [],
-            }
-            self.headers = {'User-Agent': self.USER_AGENT}
-            self.cookies = {}
-            self.url = url
-
-            parsed_url = urlparse(url)
-            if "http" in parsed_url.scheme:
-                self.scrape_url()
+            temp_output = self.start_from_url(url, self.output_format)
+            if self.output_format == Format.text:
+                print(temp_output)
             else:
-                self.parse_http_file()
+                self.output[url] = temp_output
 
-            self.whitelist_data()
-
-            # Cycle through all the db technologies and do all the checks
-            # It's more efficent cycling all technologies and match against the target once for tech
-            # instead of cycling each target feature against every technology
-            for tech in self.db["apps"]:
-                t = self.db["apps"][tech]
-                headers = t.get("headers")
-                html = t.get("html")
-                meta = t.get("meta")
-                cookies = t.get("cookies")
-                script = t.get("script")
-                url = t.get("url")
-                if headers:
-                    self.check_headers(tech, headers)
-                if html:
-                    self.check_html(tech, html)
-                if meta:
-                    self.check_meta(tech, meta)
-                if cookies:
-                    self.check_cookies(tech, cookies)
-                if script:
-                    self.check_script(tech, script)
-                if url:
-                    self.check_url(tech, url)
-
-            self.output[self.url] = self.generate_report()            
-
-        if self.output_json:
-            print(json.dumps(self.output, sort_keys=True, indent=4, cls=encoder.Encoder))
+        if self.output_format == Format.json:
+            print(json.dumps(self.output, sort_keys=True, indent=4))
         else:
             for url in self.output:
                 print(self.output[url])
 
-    def scrape_url(self):
+    def start_from_url(self, url, output_format=None):
         """
-        Scrape the target URL and collects all the data that will be filtered afterwards
+        Start webtech on a single URL/target
+
+        Returns the report for that specific target
         """
-        # By default we don't verify SSL certificates, we are only performing some useless GETs
-        response = requests.get(self.url, headers=self.headers, cookies=self.cookies, verify=False, allow_redirects=True)
-        # print("status: {}".format(response.status_code))
+        target = Target()
 
-        # TODO: switch-case for various response.status_code
-
-        self.data['url'] = self.url
-        self.data['html'] = response.text
-        self.data['headers'] = response.headers
-        self.data['cookies'] = requests.utils.dict_from_cookiejar(response.cookies)
-
-        self.parse_html_page()
-
-    def parse_http_file(self):
-        """
-        Receives an HTTP request/response file and redirect to request/response parsing
-        """
-        try:
-            path = self.url.replace('file://','')
-            data = open(path, encoding="ISO-8859-1").read()
-        except FileNotFoundError:
-            # it's an URL without schema, not a file
-            self.url = "https://" + path
-            return self.scrape_url()
-
-        # e.g. HTTP/1.1 200 OK -> that's a response!
-        # does not check HTTP/1 since it might be HTTP/2 :)
-        if data.startswith("HTTP/"):
-            return self.parse_http_response_file()
-        return self.parse_http_request_file()
-
-    def parse_http_response_file(self):
-        """
-        Parse an HTTP response file and collects all the data that will be filtered afterwards
-
-        TODO: find a better way to do this :(
-        """
-        try:
-            path = self.url.replace('file://','')
-            response = open(path, encoding="ISO-8859-1").read()
-        except FileNotFoundError:
-            # unlikely, it means the file was there and then not anymore
-            print("HTTP response file not found anymore!")
-            exit()
-
-        # BUG: path is not a reliable information. url matching will always fail
-        self.data['url'] = path
-
-        headers_raw = response.split('\n\n', 1)[0]
-        parsed_headers = requests.structures.CaseInsensitiveDict()
-        for header in headers_raw.split('\n'):
-            # might be first row: HTTP/1.1 200
-            if ":" not in header:
-                continue
-            if "set-cookie" not in header.lower():
-                header_name = header.split(':', 1)[0].strip()
-                header_value = header.split(':', 1)[1].strip()
-                parsed_headers[header_name] = header_value
-        self.data['headers'] = parsed_headers
-
-        self.data['html'] = response.split('\n\n', 1)[1]
-
-        self.data['cookies'] = {}
-        if "set-cookie:" in headers_raw.lower():
-            for header in headers_raw.split("\n"):
-                if "set-cookie:" in header.lower():
-                    # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
-                    cookie_name = header.split('=', 1)[0].split(':')[1].strip()
-                    # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
-                    cookie_value = header.split('=', 1)[1].split(';', 1)[0].strip()
-                    # BUG: if there are cookies for different domains with the same name
-                    # they are going to be overwritten (last occurrence will last)...
-                    # ¯\_(ツ)_/¯
-                    self.data['cookies'][cookie_name] = cookie_value
-
-        self.parse_html_page()
-
-    def parse_http_request_file(self):
-        """
-        Parse an HTTP request file and collects all the headers
-
-        TODO: find a better way to do this :(
-        TODO: should we support POST request?
-        """
-        try:
-            path = self.url.replace('file://','')
-            request = open(path, encoding="ISO-8859-1").read()
-        except FileNotFoundError:
-            # unlikely, it means the file was there and then not anymore
-            print("HTTP request file not found anymore!")
-            exit()
-
-        # GET / HTTP/1.1 -> /
-        uri = request.split('\n', 1)[0].split(" ")[1]
-
-        headers_raw = request.split('\n\n', 1)[0]
-        for header in headers_raw.split('\n'):
-            # might be first row: HTTP/1.1 200
-            if ":" not in header:
-                continue
-            if "cookie" not in header.lower():
-                if "host" in header.lower():
-                    host = header.split(':', 1)[1].strip()
-                else:
-                    header_name = header.split(':', 1)[0].strip()
-                    header_value = header.split(':', 1)[1].strip()
-                    self.headers[header_name] = header_value
-            else:
-                # 'Cookie: dr=gonzo; mamm=ta; trmo=n'
-                cookie_value = header.split(":", 1)[1]
-                cookies = cookie_value.split(';')
-                for cookie in cookies:
-                    cookie_name = cookie.split("=", 1)[0].strip()
-                    cookie_value = cookie.split("=", 1)[1].strip()
-                    # BUG: if there are cookies for different domains with the same name
-                    # they are going to be overwritten (last occurrence will last)...
-                    # ¯\_(ツ)_/¯
-                    self.cookies[cookie_name] = cookie_value
-
-        # BUG: we don't know for sure if it's through HTTP or HTTPS
-        self.url = "https://" + host + uri
-        self.scrape_url()
-
-    def parse_html_page(self):
-        """
-        Parse HTML content to get meta tag and script-src
-        """
-        soup = BeautifulSoup(self.data['html'], 'html.parser')
-
-        # optimize the meta in a fitting data-structure
-        page_meta = {}
-        for meta in soup.findAll("meta"):
-            if meta.get('name'):
-                # BUG: if there are meta with different content but with the same name
-                # they are going to be overwritten (last occurrence will last)...
-                # ¯\_(ツ)_/¯
-                # we also don't care about meta without name attr
-                # we default to an empty string so afterward we can detect meta that are present
-                page_meta[meta.get('name')] = meta.get('content', '')
-
-        # html meta tags
-        self.data['meta'] = page_meta
-        # html script-src links
-        self.data['script'] = [script.get('src') for script in soup.findAll("script", {"src": True})]
-
-    def whitelist_data(self):
-        """
-        Whitelist collected data to report the important/uncommon data BEFORE matching with the database
-
-        This function is useful for CMS/technologies that are not in the database
-        """
-        for key, value in self.data['headers'].items():
-            if key.lower() not in self.COMMON_HEADERS:
-                self.report['headers'].append({"name": key, "value": value})
-
-    def check_html(self, tech, html):
-        """
-        Check if request html contains some database matches
-        """
-        if isinstance(html, str):
-            html = [html]
-
-        for source in html:
-            matches = re.search(source, self.data['html'], re.IGNORECASE)
-            if matches is not None:
-                matched_tech = Tech(name=tech, version=None)
-                self.report['tech'].add(matched_tech)
-                # this tech is matched, GOTO next
-                return
-
-    def check_headers(self, tech, headers):
-        """
-        Check if request headers match some database headers
-        """
-        if not isinstance(headers, dict):
-            print('Invalid headers data in database: {}'.format(headers))
-            exit(-1)
-
-        # For every tech header check if there is a match in our target
-        for header in headers:
-            try:
-                # _store, hacky way to get the original key from a request.structures.CaseInsensitiveDict
-                real_header, content = self.data['headers']._store[header.lower()]
-            except KeyError:
-                # tech header not found, go ahead
-                continue
-            # Parse the matching regex
-            attr, extra = parse_regex_string(headers[header])
-            matches = re.search(attr, content, re.IGNORECASE)
-            # Attr is empty for a "generic" tech header
-            if attr is '' or matches is not None:
-                matched_tech = Tech(name=tech, version=None)
-                # The version extra data is present
-                if extra and extra['version']:
-                    if matches.group(1):
-                        matched_tech = matched_tech._replace(version=matches.group(1))
-                self.report['tech'].add(matched_tech)
-                # remove ALL the tech headers from the Custom Header list
-                # first make a list of tech headers
-                tech_headers = list(headers.keys())
-                # then filter them in target headers case insensitively
-                self.report['headers'] = list(filter(lambda h: not caseinsensitive_in(h['name'], tech_headers), self.report['headers']))
-                # this tech is matched, GOTO next
-                return
-
-    def check_meta(self, tech, meta):
-        """
-        Check if request meta from page's HTML contains some database matches
-        """
-        for m in meta:
-            content = self.data['meta'].get(m)
-            # filter not-available meta
-            if content is None:
-                continue
-            attr, extra = parse_regex_string(meta[m])
-            matches = re.search(attr, content, re.IGNORECASE)
-            # Attr is empty for a "generic" tech meta
-            if attr is '' or matches is not None:
-                matched_tech = Tech(name=tech, version=None)
-                # The version extra data is present
-                if extra and extra['version']:
-                    if matches.group(1):
-                        matched_tech = matched_tech._replace(version=matches.group(1))
-                self.report['tech'].add(matched_tech)
-                # this tech is matched, GOTO next
-                return
-
-    def check_script(self, tech, script):
-        """
-        Check if request script src from page's HTML contains some database matches
-        """
-        # FIX repair to some database inconsistencies
-        if isinstance(script, str):
-            script = [script]
-
-        for source in script:
-            attr, extra = parse_regex_string(source)
-            for src in self.data['script']:
-                matches = re.search(attr, src, re.IGNORECASE)
-                # Attr is empty for a "generic" tech meta
-                if attr is '' or matches is not None:
-                    matched_tech = Tech(name=tech, version=None)
-                    # The version extra data is present
-                    if extra and extra['version']:
-                        if matches.group(1):
-                            matched_tech = matched_tech._replace(version=matches.group(1))
-                    self.report['tech'].add(matched_tech)
-                    # this tech is matched, GOTO next
-                    return
-
-    def check_cookies(self, tech, cookies):
-        """
-        Check if request cookies match some database cookies
-        """
-        for cookie in cookies:
-            # cookies in db are regexes so we must test them all
-            cookie = cookie.replace("*","") # FIX for "Fe26.2**" hapi.js cookie in the database
-            for biscuit in self.data['cookies'].keys():
-                matches = re.search(cookie, biscuit, re.IGNORECASE)
-                if matches is not None:
-                    # TODO: check if cookie content matches. For now we don't care
-                    #content = self.data['cookies'][biscuit]
-                    matched_tech = Tech(name=tech, version=None)
-                    self.report['tech'].add(matched_tech)
-                    # this tech is matched, GOTO next
-                    return
-
-    def check_url(self, tech, url):
-        """
-        Check if request url match some database url rules
-        """
-        if isinstance(url, str):
-            url = [url]
-
-        for source in url:
-            matches = re.search(source, self.data['url'], re.IGNORECASE)
-            if matches is not None:
-                matched_tech = Tech(name=tech, version=None)
-                self.report['tech'].add(matched_tech)
-                # this tech is matched, GOTO next
-                return
-
-    def generate_report(self):
-        """
-        Generate a report
-        """
-        if self.output_grep:
-            techs = ""
-            for tech in self.report['tech']:
-                if len(techs): techs += "//"
-                techs += "{}".format(tech.name + "/" + 'unknown' if tech.version is None else tech.version)
-
-            headers = ""
-            for header in self.report['headers']:
-                if len(headers): headers += "//"
-                headers += "{}".format(header["name"] + ":" + header["value"])
-
-            return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
-        elif self.output_json:
-            return self.report
+        parsed_url = urlparse(url)
+        if "http" in parsed_url.scheme:
+            # Scrape the URL by making a request
+            target.scrape_url(url, headers={'User-Agent': self.USER_AGENT}, cookies={})
+        elif "file" in parsed_url.scheme:
+            # Load the file and read it
+            target.parse_http_file(url)
         else:
-            retval = ""
-            retval += "Target URL: {}\n".format(self.data['url'])
-            if self.report['tech']:
-                retval += "Detected technologies:\n"
-                for tech in self.report['tech']:
-                    retval += "\t- {} {}\n".format(tech.name, '' if tech.version is None else tech.version)
-            if self.report['headers']:
-                retval += "Detected the following interesting custom headers:\n"
-                for header in self.report['headers']:
-                    retval += "\t- {}: {}\n".format(header["name"], header["value"])
-            return retval
+            raise ValueError("Invalid scheme {} for URL {}. Only 'http', 'https' and 'file' are supported".format(parsed_url.scheme, url))
+
+        return self.perform(target, output_format)
+
+    def start_from_json(self, exchange, output_format=None):
+        """
+        Start webtech on a single target from a HTTP request-response exchange as JSON serialized string
+
+        This function is the entry point for the Burp extension
+        """
+        return self.start_from_exchange(json.loads(exchange))
+
+    def start_from_exchange(self, exchange, output_format=None):
+        """
+        Start webtech on a single target from a HTTP request-response exchange as Object
+        """
+        target = Target()
+
+        request = exchange['request']
+        response = exchange['response']
+
+        target.parse_http_response(response)
+        target.parse_http_request(request, replay=False)
+
+        return self.perform(target, output_format)
+
+    def perform(self, target, output_format):
+        """
+        Performs all the checks on the current target received as argument
+
+        This function can be executed on multiple threads since "it doesn't access on shared data"
+        """
+        if output_format is None:
+            output_format = Format.json
+        else:
+            output_format = Format(output_format)
+
+        target.whitelist_data(self.COMMON_HEADERS)
+
+        # Cycle through all the db technologies and do all the checks
+        # It's more efficent cycling all technologies and match against the target once for tech
+        # instead of cycling each target feature against every technology
+        for tech in self.db["apps"]:
+            t = self.db["apps"][tech]
+            headers = t.get("headers")
+            html = t.get("html")
+            meta = t.get("meta")
+            cookies = t.get("cookies")
+            script = t.get("script")
+            url = t.get("url")
+            if headers:
+                target.check_headers(tech, headers)
+            if html:
+                target.check_html(tech, html)
+            if meta:
+                target.check_meta(tech, meta)
+            if cookies:
+                target.check_cookies(tech, cookies)
+            if script:
+                target.check_script(tech, script)
+            if url:
+                target.check_url(tech, url)
+
+        return target.generate_report(output_format.name)

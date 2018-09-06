@@ -64,6 +64,7 @@ setup(
         ]
     },
     install_requires=REQUIRED,
+    zip_safe=False,
     include_package_data=True,
     license='GPLv3',
     classifiers=[

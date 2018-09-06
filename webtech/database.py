@@ -1,6 +1,8 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import os.path
 import time
-import requests
+from requests import get
 
 
 INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
@@ -15,7 +17,7 @@ def download_database_file(url):
     Download the database file from the WAPPPALIZER repository
     """
     print("Updating database...")
-    r = requests.get(url, stream=True)
+    r = get(url, stream=True)
     with open(WAPPALYZER_DATABASE_FILE, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:
