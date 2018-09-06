@@ -169,9 +169,9 @@ class WebTechScanIssue(IScanIssue):
         headers = self.report['headers']
         if len(headers) > 0:
             msg += "<br><br>Detected the following Custom Headers:<br>"
-            tmpl = " - {}<br>"
+            tmpl = " - {}: {}<br>"
             for header in sorted(headers):
-                msg += tmpl.format(header)
+                msg += tmpl.format(header['name'], header['version'])
 
         return msg
 
