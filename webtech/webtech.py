@@ -35,7 +35,7 @@ class WebTech():
 
     This class is the bridge between the tech's database and the Targets' data
     """
-    VERSION = 0.1
+    VERSION = 1.1
     USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
                       'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
@@ -113,7 +113,7 @@ class WebTech():
         """
         self.output = {}
         for url in self.urls:
-            temp_output = self.start_from_url(url, self.output_format)
+            temp_output = self.start_from_url(url, output_format=self.output_format)
             if self.output_format == Format.text:
                 print(temp_output)
             else:
@@ -125,7 +125,7 @@ class WebTech():
             for url in self.output:
                 print(self.output[url])
 
-    def start_from_url(self, url, output_format=None):
+    def start_from_url(self, url, output_format=None, headers={}):
         """
         Start webtech on a single URL/target
 
@@ -136,7 +136,9 @@ class WebTech():
         parsed_url = urlparse(url)
         if "http" in parsed_url.scheme:
             # Scrape the URL by making a request
-            target.scrape_url(url, headers={'User-Agent': self.USER_AGENT}, cookies={})
+            h = {'User-Agent': self.USER_AGENT}
+            h.update(headers)
+            target.scrape_url(url, headers=h, cookies={})
         elif "file" in parsed_url.scheme:
             # Load the file and read it
             target.parse_http_file(url)
