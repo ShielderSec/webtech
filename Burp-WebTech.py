@@ -171,7 +171,7 @@ class WebTechScanIssue(IScanIssue):
             msg += "<br><br>Detected the following Custom Headers:<br>"
             tmpl = " - {}: {}<br>"
             for header in sorted(headers):
-                msg += tmpl.format(header['name'], header['version'])
+                msg += tmpl.format(header['name'], header['value'])
 
         return msg
 

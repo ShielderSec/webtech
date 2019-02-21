@@ -13,7 +13,7 @@ def main():
     """
     Main function when running from command line.
     """
-    parser = OptionParser()
+    parser = OptionParser(prog="webtech")
     parser.add_option(
         "-u", "--urls", dest="urls",
         help="url(s) to scan", type="string", action="callback", callback=split_on_comma)

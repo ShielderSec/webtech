@@ -13,11 +13,11 @@ URL = ''
 EMAIL = ''
 AUTHOR = 'thezero, polict'
 REQUIRES_PYTHON = '>=2.7.0'
-VERSION = 1.1
+VERSION = 1.2
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'requests', 'bs4'
+    'requests'
 ]
 
 # The rest you shouldn't have to touch too much :)

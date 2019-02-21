@@ -4,18 +4,25 @@ import sys
 import json
 import re
 from io import open
-from requests import get
-from requests.utils import dict_from_cookiejar
-from requests.structures import CaseInsensitiveDict
-from bs4 import BeautifulSoup
+
+# From now on, hacky hack to work on Burp Jython2.7 without external modules
+BURP = False
+try:
+    from requests import get
+    from requests.utils import dict_from_cookiejar
+    from requests.structures import CaseInsensitiveDict
+
+    # Disable warning about Insecure SSL
+    from requests.packages.urllib3 import disable_warnings
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    disable_warnings(InsecureRequestWarning)
+except ImportError as e:
+    BURP = True
+    pass
 
 from . import encoder
-from .utils import FileNotFoundException, Format, Tech, caseinsensitive_in
-
-# Disable warning about Insecure SSL
-from requests.packages.urllib3 import disable_warnings
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-disable_warnings(InsecureRequestWarning)
+from .utils import FileNotFoundException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict
+from .parser import WTParser
 
 # Hacky hack to hack ack. Support python2 and python3 without depending on six
 if sys.version_info[0] > 2:
@@ -76,6 +83,10 @@ class Target():
         """
         Scrape the target URL and collects all the data that will be filtered afterwards
         """
+        if BURP:
+            # Burp flag is set when requests is not installed.
+            # When using Burp we shouldn't end up in this function so we are in a Python CLI env without requests
+            raise ImportError("Missing Requests module")
         # By default we don't verify SSL certificates, we are only performing some useless GETs
         response = get(url, headers=headers, cookies=cookies, verify=False, allow_redirects=True)
         # print("status: {}".format(response.status_code))
@@ -84,9 +95,8 @@ class Target():
 
         self.data['url'] = url
         self.data['html'] = response.text
-        self.data['headers'] = response.headers
+        self.data['headers'] = dict_from_caseinsensitivedict(response.headers)
         self.data['cookies'] = dict_from_cookiejar(response.cookies)
-
         self.parse_html_page()
 
     def parse_http_file(self, url):
@@ -116,31 +126,29 @@ class Target():
         """
         response = response.replace('\r', '')
         headers_raw = response.split('\n\n', 1)[0]
-        parsed_headers = CaseInsensitiveDict()
+        parsed_headers = {}
+
+        self.data['cookies'] = {}
         for header in headers_raw.split('\n'):
             # might be first row: HTTP/1.1 200
             if ":" not in header:
                 continue
-            if "set-cookie" not in header.lower():
+            if "set-cookie:" in header.lower():
+                # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
+                cookie_name = header.split('=', 1)[0].split(':')[1].strip()
+                # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
+                cookie_value = header.split('=', 1)[1].split(';', 1)[0].strip()
+                # BUG: if there are cookies for different domains with the same name
+                # they are going to be overwritten (last occurrence will last)...
+                # ¯\_(ツ)_/¯
+                self.data['cookies'][cookie_name] = cookie_value
+            else:
                 header_name = header.split(':', 1)[0].strip()
                 header_value = header.split(':', 1)[1].strip()
-                parsed_headers[header_name] = header_value
+                parsed_headers[header_name.lower()] = (header_value, header_name)
         self.data['headers'] = parsed_headers
 
         self.data['html'] = response.split('\n\n', 1)[1]
-
-        self.data['cookies'] = {}
-        if "set-cookie:" in headers_raw.lower():
-            for header in headers_raw.split("\n"):
-                if "set-cookie:" in header.lower():
-                    # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
-                    cookie_name = header.split('=', 1)[0].split(':')[1].strip()
-                    # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
-                    cookie_value = header.split('=', 1)[1].split(';', 1)[0].strip()
-                    # BUG: if there are cookies for different domains with the same name
-                    # they are going to be overwritten (last occurrence will last)...
-                    # ¯\_(ツ)_/¯
-                    self.data['cookies'][cookie_name] = cookie_value
 
         self.parse_html_page()
 
@@ -193,23 +201,11 @@ class Target():
         """
         Parse HTML content to get meta tag and script-src
         """
-        soup = BeautifulSoup(self.data['html'], 'html.parser')
-
-        # optimize the meta in a fitting data-structure
-        page_meta = {}
-        for meta in soup.findAll("meta"):
-            if meta.get('name'):
-                # BUG: if there are meta with different content but with the same name
-                # they are going to be overwritten (last occurrence will last)...
-                # ¯\_(ツ)_/¯
-                # we also don't care about meta without name attr
-                # we default to an empty string so afterward we can detect meta that are present
-                page_meta[meta.get('name')] = meta.get('content', '')
-
-        # html meta tags
-        self.data['meta'] = page_meta
-        # html script-src links
-        self.data['script'] = [script.get('src') for script in soup.findAll("script", {"src": True})]
+        p = WTParser()
+        p.feed(self.data['html'])
+        self.data['meta'] = p.meta
+        self.data['script'] = p.scripts
+        p.close()
 
     def whitelist_data(self, common_headers):
         """
@@ -218,8 +214,9 @@ class Target():
         This function is useful for CMS/technologies that are not in the database
         """
         for key, value in self.data['headers'].items():
-            if key.lower() not in common_headers:
-                self.report['headers'].append({"name": key, "value": value})
+            if key not in common_headers:
+                # In value[1] it's stored the original header name
+                self.report['headers'].append({"name": value[1], "value": value[0]})
 
     def check_html(self, tech, html):
         """
@@ -245,12 +242,13 @@ class Target():
 
         # For every tech header check if there is a match in our target
         for header in headers:
-            try:
-                # _store, hacky way to get the original key from a request.structures.CaseInsensitiveDict
-                real_header, content = self.data['headers']._store[header.lower()]
-            except KeyError:
-                # tech header not found, go ahead
-                continue
+            content = self.data['headers'].get(header.lower())
+            if content is None:
+                # Tech not found
+                return
+            else:
+                # Get the real content
+                content = content[0]
             # Parse the matching regex
             attr, extra = parse_regex_string(headers[header])
             matches = re.search(attr, content, re.IGNORECASE)
@@ -351,9 +349,7 @@ class Target():
         """
         Generate a report
         """
-        output_format = Format[output_format]
-
-        if output_format == Format.grep:
+        if output_format == Format['grep']:
             techs = ""
             for tech in self.report['tech']:
                 if len(techs): techs += "//"
@@ -365,7 +361,7 @@ class Target():
                 headers += "{}".format(header["name"] + ":" + header["value"])
 
             return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
-        elif output_format == Format.json:
+        elif output_format == Format['json']:
             # TODO: find a better way to run the encoder and return a JSON Object instead of encoding and decoding again
             return json.loads(json.dumps(self.report, cls=encoder.Encoder))
         else:

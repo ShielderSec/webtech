@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 import os.path
 import time
-from requests import get
+try:
+    from urllib.request import urlopen
+except ImportError as e:
+    from urllib2 import urlopen
 
 
 INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
@@ -17,11 +20,9 @@ def download_database_file(url):
     Download the database file from the WAPPPALIZER repository
     """
     print("Updating database...")
-    r = get(url, stream=True)
-    with open(WAPPALYZER_DATABASE_FILE, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024):
-            if chunk:
-                f.write(chunk)
+    response = urlopen(url)
+    with open(WAPPALYZER_DATABASE_FILE, 'wb') as out_file:
+        out_file.write(response.read())
     print("Database updated successfully!")
 
 

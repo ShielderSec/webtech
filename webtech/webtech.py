@@ -67,7 +67,7 @@ class WebTech():
             self.db = database.merge_databases(self.db, json.load(f))
 
         # Output text only
-        self.output_format = Format.text
+        self.output_format = Format['text']
 
         if options is None:
             return
@@ -102,10 +102,10 @@ class WebTech():
 
         if options.output_grep:
             # Greppable output
-            self.output_format = Format.grep
+            self.output_format = Format['grep']
         elif options.output_json:
             # JSON output
-            self.output_format = Format.json
+            self.output_format = Format['json']
 
     def start(self):
         """
@@ -114,12 +114,12 @@ class WebTech():
         self.output = {}
         for url in self.urls:
             temp_output = self.start_from_url(url, output_format=self.output_format)
-            if self.output_format == Format.text:
+            if self.output_format == Format['text']:
                 print(temp_output)
             else:
                 self.output[url] = temp_output
 
-        if self.output_format == Format.json:
+        if self.output_format == Format['json']:
             print(json.dumps(self.output, sort_keys=True, indent=4))
         else:
             for url in self.output:
@@ -176,9 +176,9 @@ class WebTech():
         This function can be executed on multiple threads since "it doesn't access on shared data"
         """
         if output_format is None:
-            output_format = Format.json
+            output_format = Format['json']
         else:
-            output_format = Format(output_format)
+            output_format = Format.get(output_format, 0)
 
         target.whitelist_data(self.COMMON_HEADERS)
 
@@ -206,4 +206,4 @@ class WebTech():
             if url:
                 target.check_url(tech, url)
 
-        return target.generate_report(output_format.name)
+        return target.generate_report(output_format)
