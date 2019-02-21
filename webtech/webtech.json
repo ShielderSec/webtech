@@ -14,6 +14,23 @@
       "headers": {
         "Server": "^(?:Microsoft-)?IIS(?:/([\\d.]+))?\\;version:\\1"
       }
+    },
+    "BigIP - F5": {
+      "headers": {
+        "Server": "BigIP"
+      }
+    },
+    "Outlook Web Access": {
+      "headers": {
+        "X-OWA-Version": "([\\d.]+)\\;version:\\1",
+        "X-OWA-DiagnosticsInfo": "",
+        "X-OWA-MinimumSupportedOWSVersion": "",
+        "X-OWA-OWSVersion": ""
+      },
+      "script": [
+        ".*/([\\d.]+)/scripts/microsoft.owa\\S*.js\\;version:\\1",
+        ".*/([\\d.]+)/scripts/owa.mail.js\\;version:\\1"
+      ]
     }
   }
 }

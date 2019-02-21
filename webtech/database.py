@@ -12,16 +12,17 @@ INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
 DATABASE_FILE = os.path.join(INSTALLATION_DIR, "webtech.json")
 WAPPALYZER_DATABASE_FILE = os.path.join(INSTALLATION_DIR, "apps.json")
 WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/Wappalyzer/master/src/apps.json"
+WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/blob/master/webtech/webtech.json" 
 DAYS = 60 * 60 * 24
 
 
-def download_database_file(url):
+def download_database_file(url, target_file):
     """
     Download the database file from the WAPPPALIZER repository
     """
     print("Updating database...")
     response = urlopen(url)
-    with open(WAPPALYZER_DATABASE_FILE, 'wb') as out_file:
+    with open(target_file, 'wb') as out_file:
         out_file.write(response.read())
     print("Database updated successfully!")
 
@@ -32,18 +33,24 @@ def update_database(args=None):
     """
     # TODO: option to force the DB update
 
+    now = int(time.time())
+    
     if not os.path.isfile(WAPPALYZER_DATABASE_FILE):
         print("Database file not present.")
         download_database_file(WAPPALYZER_DATABASE_URL)
         # set timestamp in filename
     else:
         last_update = int(os.path.getmtime(WAPPALYZER_DATABASE_FILE))
-        now = int(time.time())
-
         if last_update < now - 30 * DAYS:
             print("Database file is older than 30 days.")
             os.remove(WAPPALYZER_DATABASE_FILE)
-            download_database_file(WAPPALYZER_DATABASE_URL)
+            download_database_file(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE)
+
+    last_update = int(os.path.getmtime(DATABASE_FILE))
+    if last_update < now - 30 * DAYS:
+        print("WebTech Database file is older than 30 days.")
+        os.remove(DATABASE_FILE)
+        download_database_file(WEBTECH_DATABASE_URL, DATABASE_FILE)
 
 
 def merge_databases(db1, db2):

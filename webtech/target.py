@@ -323,8 +323,13 @@ class Target():
             for biscuit in self.data['cookies'].keys():
                 matches = re.search(cookie, biscuit, re.IGNORECASE)
                 if matches is not None:
-                    # TODO: check if cookie content matches. For now we don't care
-                    #content = self.data['cookies'][biscuit]
+                    if cookies[cookie] != '':
+                        # Let's check the cookie content
+                        content = self.data['cookies'][biscuit]
+                        matches = re.search(cookies[cookie], content, re.IGNORECASE)
+                        if matches is None:
+                            # No match, exit
+                            return
                     matched_tech = Tech(name=tech, version=None)
                     self.report['tech'].add(matched_tech)
                     # this tech is matched, GOTO next
