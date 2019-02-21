@@ -1,7 +1,7 @@
 # webtech
 Identify technologies used on websites
 
-## Installation
+## CLI Installation
 
 Simply run the following command in your terminal
 
@@ -10,6 +10,20 @@ python setup.py install --user
 ```
 
 It's important to install webtech in a folder where user can write because it will download the signature database in that folder.
+
+
+## Burp Integration
+
+Download Jython 2.7.0 standalone and install it into Burp
+
+In "Extender" > "Options" > "Python Environment":
+- Select the Jython jar location
+
+Finally, in "Extender" > "Extension":
+- Click "Add"
+- Select "py" or "Python" as extension format
+- Select the `Burp-WebTech.py` file in this folder
+
 
 ## Usage
 
@@ -21,6 +35,10 @@ $ webtech -u https://example.com/
 Target URL: https://example.com
 ...
 
+$ webtech -u file://response.txt
+
+Target URL:
+...
 ```
 
 Full usage
@@ -48,26 +66,6 @@ Options:
 
 ```
 
-## Burp Integration
-
-Download Jython 2.7.0 on Windows or 2.7.1 on GNU/Linux from maven below (*jython-standalone-2.7.1.jar*)
-
-[https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/](https://repo1.maven.org/maven2/org/python/jython-standalone/2.7.1/)
-
-In "Extender" > "Options" > "Python Environment":
-
-- Select the Jython jar location
-- Select as Module folder your system python2 folder (es. `/usr/local/lib/python2.7/dist-packages`)
-
-You can get the system module folder by executing something like:
-```python2 -c "import sys;print sys.path"```
-
-Finally, in "Extender" > "Extension":
-- Click "Add"
-- Select "py" as extension format
-- Select the `Burp-WebTech.py` file in this folder
-
-
 ## Resources for database matching
 
 HTTP Headers information - http://netinfo.link/http/headers.html  
@@ -76,5 +74,4 @@ Cookie names - https://webcookies.org/top-cookie-names
 ## TODO
 
 - review all the code TODOs
-- review and fix the database download
 - write a decent README.md  :D
