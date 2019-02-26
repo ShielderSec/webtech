@@ -35,7 +35,7 @@ class WebTech():
 
     This class is the bridge between the tech's database and the Targets' data
     """
-    VERSION = 1.1
+    VERSION = 1.2.1
     USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
                       'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
