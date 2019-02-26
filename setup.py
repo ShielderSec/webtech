@@ -13,7 +13,7 @@ URL = 'https://github.com/ShielderSec/webtech'
 EMAIL = 'info@shielder.it'
 AUTHOR = 'thezero, polict'
 REQUIRES_PYTHON = '>=2.7.0'
-VERSION = 1.2.1
+VERSION = "1.2.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
