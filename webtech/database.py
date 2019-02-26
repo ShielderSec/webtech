@@ -37,7 +37,7 @@ def update_database(args=None):
     
     if not os.path.isfile(WAPPALYZER_DATABASE_FILE):
         print("Database file not present.")
-        download_database_file(WAPPALYZER_DATABASE_URL)
+        download_database_file(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE)
         # set timestamp in filename
     else:
         last_update = int(os.path.getmtime(WAPPALYZER_DATABASE_FILE))
