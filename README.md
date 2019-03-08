@@ -1,20 +1,23 @@
-# webtech
-Identify technologies used on websites
+# WebTech
+Identify technologies used on websites. [More info on the release's blogpost](https://www.shielder.it/blog/webtech-identify-technologies-used-on-websites/).
 
 ## CLI Installation
 
-Simply run the following command in your terminal
+WebTech is available on pip:
+
+```
+pip install webtech
+```
+
+It can be also installed via setup.py:
 
 ```
 python setup.py install --user
 ```
 
-It's important to install webtech in a folder where user can write because it will download the signature database in that folder.
-
-
 ## Burp Integration
 
-Download Jython 2.7.0 standalone and install it into Burp
+Download Jython 2.7.0 standalone and install it into Burp.
 
 In "Extender" > "Options" > "Python Environment":
 - Select the Jython jar location
@@ -27,7 +30,7 @@ Finally, in "Extender" > "Extension":
 
 ## Usage
 
-Scan a website
+Scan a website:
 
 ```
 $ webtech -u https://example.com/
@@ -41,7 +44,7 @@ Target URL:
 ...
 ```
 
-Full usage
+Full usage:
 
 ```
 $ webtech -h
@@ -53,8 +56,6 @@ Options:
   -u URLS, --urls=URLS  url(s) to scan
   --ul=URLS_FILE, --urls-file=URLS_FILE
                         url(s) list file to scan
-  --rf=REQUEST_FILES, --request-files=REQUEST_FILES
-                        HTTP request file to replay
   --ua=USER_AGENT, --user-agent=USER_AGENT
                         use this user agent
   --rua, --random-user-agent
@@ -70,8 +71,3 @@ Options:
 
 HTTP Headers information - http://netinfo.link/http/headers.html  
 Cookie names - https://webcookies.org/top-cookie-names  
-
-## TODO
-
-- review all the code TODOs
-- write a decent README.md  :D
