@@ -35,8 +35,11 @@ def main():
     parser.add_option(
         "--og", "--grep", action="store_true", dest="output_grep",
         help="output grepable report", default=False)
+    parser.add_option(
+        "--udb", "--update-db", action="store_true", dest="update_db",
+        help="force update of remote db files", default=False)
 
-    (options, args) = parser.parse_args(sys.argv)
+    (options, _args) = parser.parse_args(sys.argv)
 
     if options.urls is None and options.urls_file is None:
         print("No URL(s) given!")

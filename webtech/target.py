@@ -43,13 +43,14 @@ def parse_regex_string(string):
     "version": indicate wich regex group store the version information
     "confidence": indicate a rate of confidence
     """
-    parts = string.split("\;")
+    parts = string.split(r"\;")
     if len(parts) == 1:
         return parts[0], None
     else:
         extra = {}
         for p in parts[1:]:
-            extra[p.split(":")[0]] = p.split(":")[1]
+            p = p.split(":")
+            extra[p[0]] = p[1]
         return parts[0], extra
 
 
@@ -67,10 +68,10 @@ class Target():
         self.data = {
             'url': None,
             'html': None,
-            'headers': None,
-            'cookies': None,
+            'headers': {},
+            'cookies': {},
             'meta': None,
-            'script': None
+            'script': {}
         }
 
         # self.report contains the information about the technologies detected
@@ -125,30 +126,22 @@ class Target():
         TODO: find a better way to do this :(
         """
         response = response.replace('\r', '')
-        headers_raw = response.split('\n\n', 1)[0]
-        parsed_headers = {}
-
+        headers_raw, self.data['html'] = response.split('\n\n', 1)
         self.data['cookies'] = {}
         for header in headers_raw.split('\n'):
+            header = [x.strip() for x in header.split(":", 1)]
             # might be first row: HTTP/1.1 200
-            if ":" not in header:
+            if len(header) != 2:
                 continue
-            if "set-cookie:" in header.lower():
-                # 'Set-Cookie: dr=gonzo; path=/trmon' -> "dr"
-                cookie_name = header.split('=', 1)[0].split(':')[1].strip()
-                # 'Set-Cookie: dr=gonzo; domain=jolla.it;' -> "gonzo"
-                cookie_value = header.split('=', 1)[1].split(';', 1)[0].strip()
+            if "set-cookie" in header[0].lower():
+                # 'Set-Cookie: dr=gonzo; path=/trmon'
+                cookie = [x.strip() for x in header[1].split(";", 1)[0].split("=", 1)]
                 # BUG: if there are cookies for different domains with the same name
                 # they are going to be overwritten (last occurrence will last)...
                 # ¯\_(ツ)_/¯
-                self.data['cookies'][cookie_name] = cookie_value
+                self.data['cookies'][cookie[0]] = cookie[1]
             else:
-                header_name = header.split(':', 1)[0].strip()
-                header_value = header.split(':', 1)[1].strip()
-                parsed_headers[header_name.lower()] = (header_value, header_name)
-        self.data['headers'] = parsed_headers
-
-        self.data['html'] = response.split('\n\n', 1)[1]
+                self.data['headers'][header[0].lower()] = (header[1], header[0])
 
         self.parse_html_page()
 
@@ -167,27 +160,23 @@ class Target():
 
         headers_raw = request.split('\n\n', 1)[0]
         for header in headers_raw.split('\n'):
-            # might be first row: HTTP/1.1 200
-            if ":" not in header:
+            header = [x.strip() for x in header.split(":", 1)]
+            # might be first row: GET / HTTP/1.1
+            if len(header) != 2:
                 continue
-            if "cookie" not in header.lower():
-                if "host" in header.lower():
-                    host = header.split(':', 1)[1].strip()
+            if "cookie" not in header[0].lower():
+                if "host" in header[0].lower():
+                    host = header[1]
                 else:
-                    header_name = header.split(':', 1)[0].strip()
-                    header_value = header.split(':', 1)[1].strip()
-                    replay_headers[header_name] = header_value
+                    replay_headers[header[0]] = header[1]
             else:
                 # 'Cookie: dr=gonzo; mamm=ta; trmo=n'
-                cookie_value = header.split(":", 1)[1]
-                cookies = cookie_value.split(';')
-                for cookie in cookies:
-                    cookie_name = cookie.split("=", 1)[0].strip()
-                    cookie_value = cookie.split("=", 1)[1].strip()
+                for cookie in header[1].split(';'):
+                    cookie = [x.strip() for x in cookie.split("=", 1)]
                     # BUG: if there are cookies for different domains with the same name
                     # they are going to be overwritten (last occurrence will last)...
                     # ¯\_(ツ)_/¯
-                    replay_cookies[cookie_name] = cookie_value
+                    replay_cookies[cookie[0]] = cookie[1]
 
         # BUG: we don't know for sure if it's through HTTP or HTTPS
         replay_url = "https://" + host + replay_uri
@@ -368,7 +357,7 @@ class Target():
             return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
         elif output_format == Format['json']:
             # TODO: find a better way to run the encoder and return a JSON Object instead of encoding and decoding again
-            return json.loads(json.dumps(self.report, cls=encoder.Encoder))
+            return self.report
         else:
             retval = ""
             retval += "Target URL: {}\n".format(self.data['url'])
