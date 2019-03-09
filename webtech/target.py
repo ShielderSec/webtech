@@ -104,12 +104,8 @@ class Target():
         """
         Receives an HTTP request/response file and redirect to request/response parsing
         """
-        try:
-            path = url.replace('file://', '')
-            data = open(path, encoding="ISO-8859-1").read()
-        except FileNotFoundException:
-            # it's an URL without schema, not a file
-            return self.scrape_url("https://" + path, headers={'User-Agent': self.USER_AGENT}, cookies={})
+        path = url.replace('file://', '')
+        data = open(path, encoding="ISO-8859-1").read()
 
         # e.g. HTTP/1.1 200 OK -> that's a response!
         # does not check HTTP/1 since it might be HTTP/2 :)

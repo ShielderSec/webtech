@@ -12,7 +12,11 @@ from . import database
 from . import encoder
 from .utils import Format, FileNotFoundException
 from .target import Target
+from .__version__ import __version__ as VERSION
 
+
+def default_user_agent():
+    return "webtech/{}".format(VERSION)
 
 def get_random_user_agent():
     """
@@ -36,8 +40,6 @@ class WebTech():
 
     This class is the bridge between the tech's database and the Targets' data
     """
-    VERSION = "1.2.2"
-    USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
                       'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
                       'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'Location', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
@@ -91,7 +93,12 @@ class WebTech():
                 print(e)
                 exit(-1)
 
-        self.USER_AGENT = options.user_agent or get_random_user_agent()
+        if options.user_agent is not None:
+            self.USER_AGENT = options.user_agent
+        elif options.use_random_user_agent:
+            self.USER_AGENT = get_random_user_agent()
+        else:
+            self.USER_AGENT = default_user_agent()
 
         if options.output_grep:
             # Greppable output
@@ -106,8 +113,17 @@ class WebTech():
         """
         self.output = {}
         for url in self.urls:
-            self.output[url] = self.start_from_url(url)
-                
+            try:
+                temp_output = self.start_from_url(url)
+            except (FileNotFoundException, ValueError) as e:
+                print(e)
+                continue
+
+            if self.output_format == Format['text']:
+                print(temp_output)
+            else:
+                self.output[url] = temp_output
+
         if self.output_format == Format['json']:
             print(json.dumps(self.output, sort_keys=True, indent=4, cls=encoder.Encoder))
         else:
