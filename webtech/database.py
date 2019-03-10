@@ -12,7 +12,7 @@ INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
 DATABASE_FILE = os.path.join(INSTALLATION_DIR, "webtech.json")
 WAPPALYZER_DATABASE_FILE = os.path.join(INSTALLATION_DIR, "apps.json")
 WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/Wappalyzer/master/src/apps.json"
-WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/blob/master/webtech/webtech.json" 
+WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/master/webtech/webtech.json"
 DAYS = 60 * 60 * 24
 
 
@@ -27,35 +27,32 @@ def download_database_file(url, target_file):
     print("Database updated successfully!")
 
 
+def download(webfile, dbfile, name, force=False):
+    """
+    Check if outdated and download file
+    """
+    now = int(time.time())
+    if not os.path.isfile(dbfile):
+        print("{} Database file not present.".format(name))
+        download_database_file(webfile, dbfile)
+        # set timestamp in filename
+    else:
+        last_update = int(os.path.getmtime(dbfile))
+        if last_update < now - 30 * DAYS or force:
+            if force:
+                print("Force update of {} Database file".format(name))
+            else:
+                print("{} Database file is older than 30 days.".format(name))
+            os.remove(dbfile)
+            download_database_file(webfile, dbfile)
+
+
 def update_database(args=None, force=False):
     """
     Update the database if it's not present or too old
     """
-
-    now = int(time.time())
-    
-    if not os.path.isfile(WAPPALYZER_DATABASE_FILE):
-        print("Database file not present.")
-        download_database_file(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE)
-        # set timestamp in filename
-    else:
-        last_update = int(os.path.getmtime(WAPPALYZER_DATABASE_FILE))
-        if last_update < now - 30 * DAYS or force:
-            if force:
-                print("Force update of Wappalyzer Database file")
-            else:
-                print("Wappalyzer Database file is older than 30 days.")
-            os.remove(WAPPALYZER_DATABASE_FILE)
-            download_database_file(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE)
-
-    last_update = int(os.path.getmtime(DATABASE_FILE))
-    if last_update < now - 30 * DAYS or force:
-        if force:
-            print("Force update of WebTech Database file")
-        else:
-            print("WebTech Database file is older than 30 days.")
-        os.remove(DATABASE_FILE)
-        download_database_file(WEBTECH_DATABASE_URL, DATABASE_FILE)
+    download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
+    download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
 
 
 def merge_databases(db1, db2):
