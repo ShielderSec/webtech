@@ -343,12 +343,12 @@ class Target():
             techs = ""
             for tech in self.report['tech']:
                 if len(techs): techs += "//"
-                techs += "{}".format(tech.name + "/" + 'unknown' if tech.version is None else tech.version)
+                techs += "{}/{}".format(tech.name, 'unknown' if tech.version is None else tech.version)
 
             headers = ""
             for header in self.report['headers']:
                 if len(headers): headers += "//"
-                headers += "{}".format(header["name"] + ":" + header["value"])
+                headers += "{}:{}".format(header["name"], header["value"])
 
             return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
         elif output_format == Format['json']:
