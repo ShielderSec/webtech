@@ -70,7 +70,7 @@ class Target():
             'html': None,
             'headers': {},
             'cookies': {},
-            'meta': None,
+            'meta': {},
             'script': {}
         }
 
