@@ -352,8 +352,7 @@ class Target():
 
             return "Url>{}\tTechs>{}\tHeaders>{}".format(self.data['url'], techs, headers)
         elif output_format == Format['json']:
-            # TODO: find a better way to run the encoder and return a JSON Object instead of encoding and decoding again
-            return self.report
+            return json.loads(json.dumps(self.report, cls=encoder.Encoder))
         else:
             retval = ""
             retval += "Target URL: {}\n".format(self.data['url'])

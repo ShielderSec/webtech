@@ -102,6 +102,7 @@ class BurpExtender(IBurpExtender, IScannerCheck, IScanIssue, ITab):
         exchange = {'request': req, 'response': resp}
 
         wt = webtech.WebTech()
+        wt.output_format = webtech.utils.Format['json']
         wt_report = wt.start_from_exchange(exchange)
 
         if wt_report['tech'] == [] and wt_report['headers'] == []:

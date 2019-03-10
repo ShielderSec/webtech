@@ -62,7 +62,8 @@ class WebTech():
     # 'url' check this patter in url
 
     def __init__(self, options=None):
-        database.update_database(force=options.update_db)
+        update = False if options is None else options.update_db
+        database.update_database(force=update)
 
         with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
@@ -125,7 +126,7 @@ class WebTech():
                 self.output[url] = temp_output
 
         if self.output_format == Format['json']:
-            print(json.dumps(self.output, sort_keys=True, indent=4, cls=encoder.Encoder))
+            print(self.output)
         else:
             for o in self.output.values():
                 print(o)
