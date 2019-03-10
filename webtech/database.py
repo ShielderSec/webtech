@@ -27,11 +27,10 @@ def download_database_file(url, target_file):
     print("Database updated successfully!")
 
 
-def update_database(args=None):
+def update_database(args=None, force=False):
     """
     Update the database if it's not present or too old
     """
-    # TODO: option to force the DB update
 
     now = int(time.time())
     
@@ -41,14 +40,20 @@ def update_database(args=None):
         # set timestamp in filename
     else:
         last_update = int(os.path.getmtime(WAPPALYZER_DATABASE_FILE))
-        if last_update < now - 30 * DAYS:
-            print("Database file is older than 30 days.")
+        if last_update < now - 30 * DAYS or force:
+            if force:
+                print("Force update of Wappalyzer Database file")
+            else:
+                print("Wappalyzer Database file is older than 30 days.")
             os.remove(WAPPALYZER_DATABASE_FILE)
             download_database_file(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE)
 
     last_update = int(os.path.getmtime(DATABASE_FILE))
-    if last_update < now - 30 * DAYS:
-        print("WebTech Database file is older than 30 days.")
+    if last_update < now - 30 * DAYS or force:
+        if force:
+            print("Force update of WebTech Database file")
+        else:
+            print("WebTech Database file is older than 30 days.")
         os.remove(DATABASE_FILE)
         download_database_file(WEBTECH_DATABASE_URL, DATABASE_FILE)
 
