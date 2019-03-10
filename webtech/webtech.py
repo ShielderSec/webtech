@@ -152,7 +152,7 @@ class WebTech():
 
         return self.perform(target)
 
-    def start_from_json(self, exchange, output_format=None):
+    def start_from_json(self, exchange):
         """
         Start webtech on a single target from a HTTP request-response exchange as JSON serialized string
 
