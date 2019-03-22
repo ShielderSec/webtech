@@ -2,6 +2,7 @@
 import sys
 from optparse import OptionParser
 
+from .__version__ import __version__ as VERSION
 from .webtech import WebTech
 
 
@@ -13,7 +14,7 @@ def main():
     """
     Main function when running from command line.
     """
-    parser = OptionParser(prog="webtech")
+    parser = OptionParser(prog="webtech", version="%prog {}".format(VERSION))
     parser.add_option(
         "-u", "--urls", dest="urls",
         help="url(s) to scan", type="string", action="callback", callback=split_on_comma)
@@ -35,10 +36,13 @@ def main():
     parser.add_option(
         "--og", "--grep", action="store_true", dest="output_grep",
         help="output grepable report", default=False)
+    parser.add_option(
+        "--udb", "--update-db", action="store_true", dest="update_db",
+        help="force update of remote db files", default=False)
 
-    (options, args) = parser.parse_args(sys.argv)
+    (options, _args) = parser.parse_args(sys.argv)
 
-    if options.urls is None and options.urls_file is None:
+    if options.urls is None and options.urls_file is None and options.update_db is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()

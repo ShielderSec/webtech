@@ -9,9 +9,14 @@ except ImportError:  # For Python 3
     from urllib.parse import urlparse
 
 from . import database
+from . import encoder
 from .utils import Format, FileNotFoundException
 from .target import Target
+from .__version__ import __version__ as VERSION
 
+
+def default_user_agent():
+    return "webtech/{}".format(VERSION)
 
 def get_random_user_agent():
     """
@@ -35,8 +40,6 @@ class WebTech():
 
     This class is the bridge between the tech's database and the Targets' data
     """
-    VERSION = "1.2.2"
-    USER_AGENT = "webtech/{}".format(VERSION)
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
                       'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
                       'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'Location', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
@@ -59,7 +62,13 @@ class WebTech():
     # 'url' check this patter in url
 
     def __init__(self, options=None):
-        database.update_database()
+        update = False if options is None else options.update_db
+        success = database.update_database(force=update)
+
+        if not success:
+            # Hack for not crashing Burp
+            self.fail = True
+            return
 
         with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
@@ -76,17 +85,12 @@ class WebTech():
             try:
                 with open(options.db_file) as f:
                     self.db = database.merge_databases(self.db, json.load(f))
-            except FileNotFoundException as e:
-                print(e)
-                exit(-1)
-            except ValueError as e:
+            except (FileNotFoundException, ValueError) as e:
                 print(e)
                 exit(-1)
 
-        if options.urls is not None:
-            self.urls = options.urls
-        else:
-            self.urls = []
+        self.urls = options.urls or []
+
         if options.urls_file is not None:
             try:
                 with open(options.urls_file) as f:
@@ -97,8 +101,10 @@ class WebTech():
 
         if options.user_agent is not None:
             self.USER_AGENT = options.user_agent
-        if options.use_random_user_agent:
+        elif options.use_random_user_agent:
             self.USER_AGENT = get_random_user_agent()
+        else:
+            self.USER_AGENT = default_user_agent()
 
         if options.output_grep:
             # Greppable output
@@ -111,21 +117,29 @@ class WebTech():
         """
         Start the engine, fetch an URL and report the findings
         """
+        if self.fail:
+            # Fail badly
+            exit(1)
         self.output = {}
         for url in self.urls:
-            temp_output = self.start_from_url(url, output_format=self.output_format)
+            try:
+                temp_output = self.start_from_url(url)
+            except (FileNotFoundException, ValueError) as e:
+                print(e)
+                continue
+
             if self.output_format == Format['text']:
                 print(temp_output)
             else:
                 self.output[url] = temp_output
 
         if self.output_format == Format['json']:
-            print(json.dumps(self.output, sort_keys=True, indent=4))
+            print(self.output)
         else:
-            for url in self.output:
-                print(self.output[url])
+            for o in self.output.values():
+                print(o)
 
-    def start_from_url(self, url, output_format=None, headers={}):
+    def start_from_url(self, url, headers={}):
         """
         Start webtech on a single URL/target
 
@@ -145,9 +159,9 @@ class WebTech():
         else:
             raise ValueError("Invalid scheme {} for URL {}. Only 'http', 'https' and 'file' are supported".format(parsed_url.scheme, url))
 
-        return self.perform(target, output_format)
+        return self.perform(target)
 
-    def start_from_json(self, exchange, output_format=None):
+    def start_from_json(self, exchange):
         """
         Start webtech on a single target from a HTTP request-response exchange as JSON serialized string
 
@@ -155,30 +169,29 @@ class WebTech():
         """
         return self.start_from_exchange(json.loads(exchange))
 
-    def start_from_exchange(self, exchange, output_format=None):
+    def start_from_exchange(self, exchange):
         """
         Start webtech on a single target from a HTTP request-response exchange as Object
         """
         target = Target()
 
-        request = exchange['request']
-        response = exchange['response']
+        target.parse_http_response(exchange['response'])
+        target.parse_http_request(exchange['request'], replay=False)
 
-        target.parse_http_response(response)
-        target.parse_http_request(request, replay=False)
+        return self.perform(target)
 
-        return self.perform(target, output_format)
-
-    def perform(self, target, output_format):
+    def perform(self, target):
         """
         Performs all the checks on the current target received as argument
 
         This function can be executed on multiple threads since "it doesn't access on shared data"
         """
-        if output_format is None:
-            output_format = Format['json']
-        else:
-            output_format = Format.get(output_format, 0)
+        if self.fail:
+            # Fail gracefully
+            if self.output_format == Format['json']:
+                return {}
+            else:
+                return ''
 
         target.whitelist_data(self.COMMON_HEADERS)
 
@@ -206,4 +219,4 @@ class WebTech():
             if url:
                 target.check_url(tech, url)
 
-        return target.generate_report(output_format)
+        return target.generate_report(self.output_format)

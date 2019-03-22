@@ -64,6 +64,7 @@ Options:
                         custom database file
   --oj, --json          output json-encoded report
   --og, --grep          output grepable report
+  --udb, --update-db    force update of remote db files
 
 ```
 

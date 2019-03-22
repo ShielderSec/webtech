@@ -102,10 +102,11 @@ class BurpExtender(IBurpExtender, IScannerCheck, IScanIssue, ITab):
         exchange = {'request': req, 'response': resp}
 
         wt = webtech.WebTech()
+        wt.output_format = webtech.utils.Format['json']
         wt_report = wt.start_from_exchange(exchange)
 
-        if wt_report['tech'] == [] and wt_report['headers'] == []:
-            # nothing detected
+        if wt_report.get('tech') is None or wt_report.get('headers') is None or (wt_report['tech'] == [] and wt_report['headers'] == []):
+            # there was a fail or nothing was detected
             return None
 
         scanIssues.append(WebTechScanIssue(
