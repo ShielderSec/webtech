@@ -65,6 +65,7 @@ class WebTech():
         update = False if options is None else options.update_db
         success = database.update_database(force=update)
 
+        self.fail = False
         if not success:
             # Hack for not crashing Burp
             self.fail = True
