@@ -63,7 +63,12 @@ class WebTech():
 
     def __init__(self, options=None):
         update = False if options is None else options.update_db
-        database.update_database(force=update)
+        success = database.update_database(force=update)
+
+        if not success:
+            # Hack for not crashing Burp
+            self.fail = True
+            return
 
         with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
@@ -112,6 +117,9 @@ class WebTech():
         """
         Start the engine, fetch an URL and report the findings
         """
+        if self.fail:
+            # Fail badly
+            exit(1)
         self.output = {}
         for url in self.urls:
             try:
@@ -178,6 +186,13 @@ class WebTech():
 
         This function can be executed on multiple threads since "it doesn't access on shared data"
         """
+        if self.fail:
+            # Fail gracefully
+            if self.output_format == Format['json']:
+                return {}
+            else:
+                return ''
+
         target.whitelist_data(self.COMMON_HEADERS)
 
         # Cycle through all the db technologies and do all the checks

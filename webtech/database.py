@@ -4,8 +4,9 @@ import os.path
 import time
 try:
     from urllib.request import urlopen
+    from urllib.error import URLError
 except ImportError as e:
-    from urllib2 import urlopen
+    from urllib2 import urlopen, URLError
 
 
 INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
@@ -51,8 +52,13 @@ def update_database(args=None, force=False):
     """
     Update the database if it's not present or too old
     """
-    download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
-    download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
+    try:
+        download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
+        download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
+        return True
+    except URLError as e:
+        print("Unable to update database, check your internet connection and Github.com availability.")
+        return False
 
 
 def merge_databases(db1, db2):
