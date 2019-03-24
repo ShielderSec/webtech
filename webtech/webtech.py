@@ -9,7 +9,6 @@ except ImportError:  # For Python 3
     from urllib.parse import urlparse
 
 from . import database
-from . import encoder
 from .utils import Format, FileNotFoundException
 from .target import Target
 from .__version__ import __version__ as VERSION
@@ -62,7 +61,7 @@ class WebTech():
     # 'url' check this patter in url
 
     def __init__(self, options=None):
-        update = False if options is None else options.update_db
+        update = False if options is None else options.get('update_db', False)
         success = database.update_database(force=update)
 
         self.fail = False
@@ -79,38 +78,39 @@ class WebTech():
         # Output text only
         self.output_format = Format['text']
 
+        # Default user agent
+        self.USER_AGENT = default_user_agent()
+
         if options is None:
             return
 
-        if options.db_file is not None:
+        if options.get('database_file'):
             try:
-                with open(options.db_file) as f:
+                with open(options.get('database_file')) as f:
                     self.db = database.merge_databases(self.db, json.load(f))
             except (FileNotFoundException, ValueError) as e:
                 print(e)
                 exit(-1)
 
-        self.urls = options.urls or []
+        self.urls = options.get('urls', [])
 
-        if options.urls_file is not None:
+        if options.get('urls_file'):
             try:
-                with open(options.urls_file) as f:
+                with open(options.get('urls_file')) as f:
                     self.urls = f.readlines()
             except FileNotFoundException as e:
                 print(e)
                 exit(-1)
 
-        if options.user_agent is not None:
-            self.USER_AGENT = options.user_agent
-        elif options.use_random_user_agent:
+        if options.get('user_agent'):
+            self.USER_AGENT = options.get('user_agent')
+        elif options.get('random_user_agent'):
             self.USER_AGENT = get_random_user_agent()
-        else:
-            self.USER_AGENT = default_user_agent()
 
-        if options.output_grep:
+        if options.get('grep'):
             # Greppable output
             self.output_format = Format['grep']
-        elif options.output_json:
+        elif options.get('json'):
             # JSON output
             self.output_format = Format['json']
 
