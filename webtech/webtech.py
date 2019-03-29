@@ -9,7 +9,7 @@ except ImportError:  # For Python 3
     from urllib.parse import urlparse
 
 from . import database
-from .utils import Format, FileNotFoundException
+from .utils import Format, FileNotFoundException, ConnectionException
 from .target import Target
 from .__version__ import __version__ as VERSION
 
@@ -114,6 +114,11 @@ class WebTech():
             # JSON output
             self.output_format = Format['json']
 
+        try:
+            self.timeout = int(options.get('timeout', '10'))
+        except ValueError:
+            self.timeout = 10
+
     def start(self):
         """
         Start the engine, fetch an URL and report the findings
@@ -128,6 +133,9 @@ class WebTech():
             except (FileNotFoundException, ValueError) as e:
                 print(e)
                 continue
+            except ConnectionException as e:
+                print("Connection error while scanning {}".format(url))
+                continue
 
             if self.output_format == Format['text']:
                 print(temp_output)
@@ -140,12 +148,13 @@ class WebTech():
             for o in self.output.values():
                 print(o)
 
-    def start_from_url(self, url, headers={}):
+    def start_from_url(self, url, headers={}, timeout=None):
         """
         Start webtech on a single URL/target
 
         Returns the report for that specific target
         """
+        timeout = timeout or self.timeout
         target = Target()
 
         parsed_url = urlparse(url)
@@ -153,7 +162,7 @@ class WebTech():
             # Scrape the URL by making a request
             h = {'User-Agent': self.USER_AGENT}
             h.update(headers)
-            target.scrape_url(url, headers=h, cookies={})
+            target.scrape_url(url, headers=h, cookies={}, timeout=timeout)
         elif "file" in parsed_url.scheme:
             # Load the file and read it
             target.parse_http_file(url)

@@ -11,6 +11,7 @@ try:
     from requests import get
     from requests.utils import dict_from_cookiejar
     from requests.structures import CaseInsensitiveDict
+    from requests.exceptions import RequestException
 
     # Disable warning about Insecure SSL
     from requests.packages.urllib3 import disable_warnings
@@ -21,7 +22,7 @@ except ImportError as e:
     pass
 
 from . import encoder
-from .utils import FileNotFoundException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict
+from .utils import ConnectionException, FileNotFoundException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict
 from .parser import WTParser
 
 # Hacky hack to hack ack. Support python2 and python3 without depending on six
@@ -80,7 +81,7 @@ class Target():
             'headers': [],
         }
 
-    def scrape_url(self, url, headers={}, cookies={}):
+    def scrape_url(self, url, headers={}, cookies={}, timeout=10):
         """
         Scrape the target URL and collects all the data that will be filtered afterwards
         """
@@ -89,7 +90,10 @@ class Target():
             # When using Burp we shouldn't end up in this function so we are in a Python CLI env without requests
             raise ImportError("Missing Requests module")
         # By default we don't verify SSL certificates, we are only performing some useless GETs
-        response = get(url, headers=headers, cookies=cookies, verify=False, allow_redirects=True)
+        try:
+            response = get(url, headers=headers, cookies=cookies, verify=False, allow_redirects=True, timeout=timeout)
+        except RequestException as e:
+            raise ConnectionException(e)
         # print("status: {}".format(response.status_code))
 
         # TODO: switch-case for various response.status_code

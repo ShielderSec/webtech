@@ -39,6 +39,8 @@ def main():
     parser.add_option(
         "--update-db", "--udb", action="store_true",
         help="force update of remote db files", default=False)
+    parser.add_option(
+        "--timeout", type="float", help="maximum timeout for scrape requests", default=10)
 
     (options, _args) = parser.parse_args(sys.argv)
     options = vars(options)
