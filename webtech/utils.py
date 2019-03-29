@@ -16,6 +16,12 @@ Format = {
 Tech = namedtuple('Tech', ['name', 'version'])
 
 
+class ConnectionException(Exception):
+    pass
+
+class UpdateInBurpException:
+    pass
+
 def caseinsensitive_in(element, elist):
     """
     Given a list and an element, return true if the element is present in the list

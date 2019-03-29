@@ -16,33 +16,36 @@ def main():
     """
     parser = OptionParser(prog="webtech", version="%prog {}".format(VERSION))
     parser.add_option(
-        "-u", "--urls", dest="urls",
+        "-u", "--urls",
         help="url(s) to scan", type="string", action="callback", callback=split_on_comma)
     parser.add_option(
-        "--ul", "--urls-file", dest="urls_file",
+        "--urls-file", "--ul",
         help="url(s) list file to scan", type="string")
     parser.add_option(
-        "--ua", "--user-agent", dest="user_agent",
+        "--user-agent", "--ua",
         help="use this user agent")
     parser.add_option(
-        "--rua", "--random-user-agent", action="store_true", dest="use_random_user_agent",
+        "--random-user-agent", "--rua", action="store_true",
         help="use a random user agent", default=False)
     parser.add_option(
-        "--db", "--database-file", dest="db_file",
+        "--database-file", "--db",
         help="custom database file")
     parser.add_option(
-        "--oj", "--json", action="store_true", dest="output_json",
+        "--json", "--oj", action="store_true",
         help="output json-encoded report", default=False)
     parser.add_option(
-        "--og", "--grep", action="store_true", dest="output_grep",
+        "--grep", "--og", action="store_true",
         help="output grepable report", default=False)
     parser.add_option(
-        "--udb", "--update-db", action="store_true", dest="update_db",
+        "--update-db", "--udb", action="store_true",
         help="force update of remote db files", default=False)
+    parser.add_option(
+        "--timeout", type="float", help="maximum timeout for scrape requests", default=10)
 
     (options, _args) = parser.parse_args(sys.argv)
+    options = vars(options)
 
-    if options.urls is None and options.urls_file is None and options.update_db is None:
+    if options.get('urls') is None and options.get('urls_file') is None and options.get('update_db') is None:
         print("No URL(s) given!")
         parser.print_help()
         exit()
