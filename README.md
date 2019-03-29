@@ -68,6 +68,25 @@ Options:
 
 ```
 
+## Use WebTech as a library
+
+```
+import webtech
+
+# you can use options, same as from the command line
+wt = webtech.WebTech(options={'json': True})
+
+# scan a single website
+try:
+  report = wt.start_from_url('https://shielder.it')
+  print(report)
+except webtech.utils.ConnectionException:
+  print("Connection error")
+```
+
+For more examples see `webtech_example.py`.
+
+
 ## Resources for database matching
 
 HTTP Headers information - http://netinfo.link/http/headers.html  
