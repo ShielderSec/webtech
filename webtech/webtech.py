@@ -10,7 +10,7 @@ except ImportError:  # For Python 3
 
 from . import database
 from .utils import Format, FileNotFoundException, ConnectionException
-from .target import Target
+from .target import Target, BURP
 from .__version__ import __version__ as VERSION
 
 
@@ -62,7 +62,7 @@ class WebTech():
 
     def __init__(self, options=None):
         update = False if options is None else options.get('update_db', False)
-        success = database.update_database(force=update)
+        success = database.update_database(force=update, burp=BURP)
 
         self.fail = False
         if not success:

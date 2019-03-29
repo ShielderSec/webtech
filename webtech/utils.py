@@ -19,6 +19,8 @@ Tech = namedtuple('Tech', ['name', 'version'])
 class ConnectionException(Exception):
     pass
 
+class UpdateInBurpException:
+    pass
 
 def caseinsensitive_in(element, elist):
     """
