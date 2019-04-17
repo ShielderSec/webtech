@@ -97,7 +97,7 @@ class WebTech():
         if options.get('urls_file'):
             try:
                 with open(options.get('urls_file')) as f:
-                    self.urls = [line.rstrip() for line in f]                    
+                    self.urls = [line.rstrip() for line in f]
             except FileNotFoundException as e:
                 print(e)
                 exit(-1)
