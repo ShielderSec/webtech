@@ -127,7 +127,7 @@ class WebTech():
             # Fail badly
             exit(1)
         self.output = {}
-        for url in self.urls:
+        for url in self.urls or []:
             try:
                 temp_output = self.start_from_url(url)
             except (FileNotFoundException, ValueError) as e:
