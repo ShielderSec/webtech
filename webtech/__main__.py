@@ -45,7 +45,7 @@ def main():
     (options, _args) = parser.parse_args(sys.argv)
     options = vars(options)
 
-    if options.get('urls') is None and options.get('urls_file') is None and options.get('update_db') is None:
+    if options.get('urls') is None and options.get('urls_file') is None and not options.get('update_db'):
         print("No URL(s) given!")
         parser.print_help()
         exit()

@@ -92,7 +92,7 @@ class WebTech():
                 print(e)
                 exit(-1)
 
-        self.urls = options.get('urls', [])
+        self.urls = options.get('urls') or []
 
         if options.get('urls_file'):
             try:
