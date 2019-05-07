@@ -143,7 +143,7 @@ class WebTech():
                 self.output[url] = temp_output
 
         if self.output_format == Format['json']:
-            print(self.output)
+            print(json.dumps(self.output))
         else:
             for o in self.output.values():
                 print(o)
