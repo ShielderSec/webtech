@@ -117,7 +117,10 @@ class Target():
             # BUG: path is not a reliable information. url matching will always fail
             self.data['url'] = path
             return self.parse_http_response(data)
-        return self.parse_http_request(data)
+        elif "HTTP/" in data.split('\n')[0]:
+            return self.parse_http_request(data)
+        else:
+            raise ValueError("The supplied file is not an HTTP Request or an HTTP Response. The file content is missing HTTP headers")
 
     def parse_http_response(self, response):
         """
