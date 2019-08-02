@@ -6,7 +6,7 @@ from javax.swing import (GroupLayout, JPanel, JCheckBox, JButton)
 import pickle
 import json
 from webtech import WebTech
-from .__version__ import __version__ as VERSION
+from webtech.__version__ import __version__ as VERSION
 
 issueTypeWebTech = 3933012
 issueNameWebTech = "Detected some technologies in use"
