@@ -4,10 +4,9 @@ import sys
 import json
 import re
 from io import open
+from .__burp__ import BURP
 
-# From now on, hacky hack to work on Burp Jython2.7 without external modules
-BURP = False
-try:
+if not BURP:
     from requests import get
     from requests.utils import dict_from_cookiejar
     from requests.structures import CaseInsensitiveDict
@@ -17,9 +16,6 @@ try:
     from requests.packages.urllib3 import disable_warnings
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
     disable_warnings(InsecureRequestWarning)
-except ImportError as e:
-    BURP = True
-    pass
 
 from . import encoder
 from .utils import ConnectionException, FileNotFoundException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict

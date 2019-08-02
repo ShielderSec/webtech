@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 import os.path
 import time
-try:
-    from urllib.request import urlopen
-    from urllib.error import URLError
-except ImportError as e:
-    from urllib2 import urlopen, URLError
-from .utils import UpdateInBurpException
+from .__burp__ import BURP
+
+if not BURP:
+    try:
+        from urllib.request import urlopen
+        from urllib.error import URLError
+    except ImportError as e:
+        from urllib2 import urlopen, URLError
 
 
 INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
@@ -29,28 +31,18 @@ def download_database_file(url, target_file):
     print("Database updated successfully!")
 
 
-def save_database_file(content, target_file):
-    with open(target_file, 'wb') as out_file:
-        out_file.write(content)
-    print("Database updated successfully!")
-
-
-def download(webfile, dbfile, name, force=False, burp=False):
+def download(webfile, dbfile, name, force=False):
     """
     Check if outdated and download file
     """
     now = int(time.time())
     if not os.path.isfile(dbfile):
         print("{} Database file not present.".format(name))
-        if burp:
-            raise UpdateInBurpException()
         download_database_file(webfile, dbfile)
         # set timestamp in filename
     else:
         last_update = int(os.path.getmtime(dbfile))
         if last_update < now - 30 * DAYS or force:
-            if burp:
-                raise UpdateInBurpException()
             if force:
                 print("Force update of {} Database file".format(name))
             else:
@@ -59,13 +51,13 @@ def download(webfile, dbfile, name, force=False, burp=False):
             download_database_file(webfile, dbfile)
 
 
-def update_database(args=None, force=False, burp=False):
+def update_database(args=None, force=False):
     """
     Update the database if it's not present or too old
     """
     try:
-        download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force, burp=burp)
-        download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force, burp=burp)
+        download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
+        download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
         return True
     except URLError as e:
         print("Unable to update database, check your internet connection and Github.com availability.")

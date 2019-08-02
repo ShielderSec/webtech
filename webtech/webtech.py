@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import os
 import json
 import random
@@ -8,9 +9,10 @@ try:
 except ImportError:  # For Python 3
     from urllib.parse import urlparse
 
+from .__burp__ import BURP
 from . import database
 from .utils import Format, FileNotFoundException, ConnectionException
-from .target import Target, BURP
+from .target import Target
 from .__version__ import __version__ as VERSION
 
 
@@ -21,7 +23,6 @@ def get_random_user_agent():
     """
     Get a random user agent from a file
     """
-
     ua_file = os.path.join(os.path.realpath(os.path.dirname(__file__)), "ua.txt")
     try:
         with open(ua_file) as f:
@@ -61,14 +62,9 @@ class WebTech():
     # 'url' check this patter in url
 
     def __init__(self, options=None):
-        update = False if options is None else options.get('update_db', False)
-        success = database.update_database(force=update, burp=BURP)
-
-        self.fail = False
-        if not success:
-            # Hack for not crashing Burp
-            self.fail = True
-            return
+        if not BURP:
+            update = False if options is None else options.get('update_db', False)
+            database.update_database(force=update)
 
         with open(database.WAPPALYZER_DATABASE_FILE) as f:
             self.db = json.load(f)
@@ -123,9 +119,6 @@ class WebTech():
         """
         Start the engine, fetch an URL and report the findings
         """
-        if self.fail:
-            # Fail badly
-            exit(1)
         self.output = {}
         for url in self.urls or []:
             try:
@@ -196,13 +189,6 @@ class WebTech():
 
         This function can be executed on multiple threads since "it doesn't access on shared data"
         """
-        if self.fail:
-            # Fail gracefully
-            if self.output_format == Format['json']:
-                return {}
-            else:
-                return ''
-
         target.whitelist_data(self.COMMON_HEADERS)
 
         # Cycle through all the db technologies and do all the checks

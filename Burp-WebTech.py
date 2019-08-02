@@ -6,14 +6,10 @@ from javax.swing import (GroupLayout, JPanel, JCheckBox, JButton)
 import pickle
 import json
 from webtech import WebTech
-from webtech.utils import UpdateInBurpException
-from webtech.database import save_database_file, WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, WEBTECH_DATABASE_URL, DATABASE_FILE
-from webtech.__version__ import __version__ as VERSION
+from .__version__ import __version__ as VERSION
 
 issueTypeWebTech = 3933012
 issueNameWebTech = "Detected some technologies in use"
-
-databases = [(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE), (WEBTECH_DATABASE_URL, DATABASE_FILE)]
 
 class BurpExtender(IBurpExtender, IScannerCheck, IScanIssue, ITab):
     def registerExtenderCallbacks(self, callbacks):
@@ -23,20 +19,7 @@ class BurpExtender(IBurpExtender, IScannerCheck, IScanIssue, ITab):
         self.out = callbacks.getStdout()
         self.callbacks.printOutput("Sucessfully loaded WebTech {}".format(VERSION))
 
-        try:
-            self.webtech = WebTech(options={'json': True})
-        except UpdateInBurpException as e:
-            #self.callbacks.printOutput(e)
-            for db_file in databases:
-                db = self.callbacks.makeHttpRequest(
-                    'raw.githubusercontent.com', # we are hardcoding this since there isn't a nice api for that
-                    443,
-                    True,
-                    self.helpers.buildHttpRequest(URL(db_file[0]))
-                );
-                db = db.tostring()
-                save_database_file(db[db.index("\r\n\r\n") + len("\r\n\r\n"):], db_file[1])
-            self.webtech = WebTech(options={'json': True})
+        self.webtech = WebTech(options={'json': True})
 
         # define all checkboxes
         self.cbPassiveChecks = self.defineCheckBox("Enable Passive Scanner Checks")
