@@ -244,7 +244,7 @@ class Target():
             if attr is '' or matches is not None:
                 matched_tech = Tech(name=tech, version=None)
                 # The version extra data is present
-                if extra and extra['version']:
+                if extra and 'version' in extra:
                     if matches.group(1):
                         matched_tech = matched_tech._replace(version=matches.group(1))
                 self.report['tech'].add(matched_tech)
@@ -271,7 +271,7 @@ class Target():
             if attr is '' or matches is not None:
                 matched_tech = Tech(name=tech, version=None)
                 # The version extra data is present
-                if extra and extra['version']:
+                if extra and 'version' in extra:
                     if matches.group(1):
                         matched_tech = matched_tech._replace(version=matches.group(1))
                 self.report['tech'].add(matched_tech)
@@ -294,7 +294,7 @@ class Target():
                 if attr is '' or matches is not None:
                     matched_tech = Tech(name=tech, version=None)
                     # The version extra data is present
-                    if extra and extra['version']:
+                    if extra and 'version' in extra:
                         if matches.group(1):
                             matched_tech = matched_tech._replace(version=matches.group(1))
                     self.report['tech'].add(matched_tech)
