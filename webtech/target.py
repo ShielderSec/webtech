@@ -3,6 +3,7 @@
 import sys
 import json
 import re
+import sre_constants
 from io import open
 from .__burp__ import BURP
 
@@ -214,9 +215,19 @@ class Target():
             html = [html]
 
         for source in html:
-            matches = re.search(source, self.data['html'], re.IGNORECASE)
+            # Parse the matching regex
+            attr, extra = parse_regex_string(source)
+            matches = None
+            try:
+                matches = re.search(attr, self.data['html'], re.IGNORECASE)
+            except sre_constants.error:
+                pass
             if matches is not None:
                 matched_tech = Tech(name=tech, version=None)
+                # The version extra data is present
+                if extra and 'version' in extra:
+                    if matches.group(1):
+                        matched_tech = matched_tech._replace(version=matches.group(1))
                 self.report['tech'].add(matched_tech)
                 # this tech is matched, GOTO next
                 return
