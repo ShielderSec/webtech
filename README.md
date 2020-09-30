@@ -1,7 +1,7 @@
 # WebTech
 Identify technologies used on websites. [More info on the release's blogpost](https://www.shielder.it/blog/webtech-identify-technologies-used-on-websites/).
 
-## CLI Installation
+## Easily CLI Installation
 
 WebTech is available on pip:
 
@@ -15,7 +15,7 @@ It can be also installed via setup.py:
 python setup.py install --user
 ```
 
-## Burp Integration
+## Easily Burp Integration
 
 Download Jython 2.7.0 standalone and install it into Burp.
 
@@ -28,7 +28,7 @@ Finally, in "Extender" > "Extension":
 - Select the `Burp-WebTech.py` file in this folder
 
 
-## Usage
+## Easy to Usage
 
 Scan a website:
 
