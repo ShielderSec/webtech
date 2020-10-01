@@ -1,4 +1,4 @@
-# WebTech
+# WebTech - AN Best amazing project
 Identify technologies used on websites. [More info on the release's blogpost](https://www.shielder.it/blog/webtech-identify-technologies-used-on-websites/).
 
 ## CLI Installation
