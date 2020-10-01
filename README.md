@@ -17,7 +17,7 @@ python setup.py install --user
 
 ## Burp Integration
 
-Download Jython 2.7.0 standalone and install it into Burp.
+Download Jython 2.7.2 standalone and install it into Burp.
 
 In "Extender" > "Options" > "Python Environment":
 - Select the Jython jar location
