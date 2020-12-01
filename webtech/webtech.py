@@ -42,7 +42,7 @@ class WebTech():
     """
     COMMON_HEADERS = ['Accept-Ranges', 'Access-Control-Allow-Methods', 'Access-Control-Allow-Origin', 'Age', 'Cache-Control', 'Connection',
                       'Content-Encoding', 'Content-Language', 'Content-Length', 'Content-Security-Policy', 'Content-Type', 'Date', 'ETag', 'Expect-CT', 'Expires',
-                      'Feature-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'Location', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
+                      'Feature-Policy', 'Permissions-Policy', 'Keep-Alive', 'Last-Modified', 'Link', 'Location', 'P3P', 'Pragma', 'Referrer-Policy', 'Set-Cookie',
                       'Strict-Transport-Security', 'Transfer-Encoding', 'Vary', 'X-Accel-Buffering', 'X-Cache', 'X-Cache-Hits', 'X-Content-Security-Policy',
                       'X-Content-Type-Options', 'X-Frame-Options', 'X-Timer', 'X-WebKit-CSP', 'X-XSS-Protection']
     COMMON_HEADERS = [ch.lower() for ch in COMMON_HEADERS]
@@ -66,8 +66,10 @@ class WebTech():
             update = False if options is None else options.get('update_db', False)
             database.update_database(force=update)
 
-        with open(database.WAPPALYZER_DATABASE_FILE) as f:
-            self.db = json.load(f)
+        self.db = None
+        if os.path.isfile(database.WAPPALYZER_DATABASE_FILE):
+            with open(database.WAPPALYZER_DATABASE_FILE) as f:
+                self.db = json.load(f)
         with open(database.DATABASE_FILE) as f:
             self.db = database.merge_databases(self.db, json.load(f))
 

@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import os
+import sys
 from collections import namedtuple
 
 try:
@@ -32,3 +32,30 @@ def dict_from_caseinsensitivedict(cidict):
     for key, value in cidict.items():
         d[key.lower()] = (value, key)
     return d
+
+def user_data_dir(appname):
+    system = system_platform()
+    if system == "win32":
+        path = os.path.normpath(os.path.expandvars(r'%APPDATA%'))
+    elif system == 'darwin':
+        path = os.path.expanduser('~/Library/Application Support/')
+    else:
+        path = os.getenv('XDG_DATA_HOME', os.path.expanduser("~/.local/share"))
+    path = os.path.join(path, appname)
+    return path
+
+def system_platform():
+    if sys.platform.startswith('java'):
+        import platform
+        os_name = platform.java_ver()[3][0]
+        if os_name.startswith('Windows'): # "Windows XP", "Windows 7", etc.
+            system = 'win32'
+        elif os_name.startswith('Mac'): # "Mac OS X", etc.
+            system = 'darwin'
+        else: # "Linux", "SunOS", "FreeBSD", etc.
+            # Setting this to "linux2" is not ideal, but only Windows or Mac
+            # are actually checked for and the rest of the module expects
+            # *sys.platform* style strings.
+            system = 'linux2'
+    else:
+        system = sys.platform

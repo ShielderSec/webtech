@@ -3,6 +3,7 @@
 import os.path
 import time
 from .__burp__ import BURP
+from .utils import user_data_dir
 
 if not BURP:
     try:
@@ -12,10 +13,15 @@ if not BURP:
         from urllib2 import urlopen, URLError
 
 
-INSTALLATION_DIR = os.path.realpath(os.path.dirname(__file__))
-DATABASE_FILE = os.path.join(INSTALLATION_DIR, "webtech.json")
-WAPPALYZER_DATABASE_FILE = os.path.join(INSTALLATION_DIR, "apps.json")
-WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/Wappalyzer/master/src/apps.json"
+if BURP:
+    DATA_DIR = os.path.realpath(os.path.dirname(__file__))
+else:
+    DATA_DIR = user_data_dir('webtech')
+    if not os.path.isdir(DATA_DIR):
+        os.mkdir(DATA_DIR)
+DATABASE_FILE = os.path.join(DATA_DIR, "webtech.json")
+WAPPALYZER_DATABASE_FILE = os.path.join(DATA_DIR, "apps.json")
+WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/wappalyzer/master/src/technologies.json"
 WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/master/webtech/webtech.json"
 DAYS = 60 * 60 * 24
 
@@ -57,6 +63,11 @@ def update_database(args=None, force=False):
     """
     try:
         download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
+    except URLError as e:
+        print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
+        pass
+
+    try:
         download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
         return True
     except URLError as e:
@@ -69,9 +80,12 @@ def merge_databases(db1, db2):
     This helper function merge elements from two databases without overrding its elements
     This function is not generic and *follow the Wappalyzer db scheme*
     """
-    # Wappalyzer DB format must have an apps object
-    db1 = db1['apps']
-    db2 = db2['apps']
+    # Wappalyzer DB format must have an apps/technologies object
+    if db1 is None and db2.get('apps') is not None:
+        return db2
+
+    db1 = db1.get('technologies') or db1.get('apps')
+    db2 = db2.get('technologies') or db2.get('apps')
 
     merged_db = db1
 
