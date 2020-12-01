@@ -45,6 +45,7 @@ def user_data_dir(appname):
     return path
 
 def system_platform():
+    system = sys.platform
     if sys.platform.startswith('java'):
         import platform
         os_name = platform.java_ver()[3][0]
@@ -57,5 +58,4 @@ def system_platform():
             # are actually checked for and the rest of the module expects
             # *sys.platform* style strings.
             system = 'linux2'
-    else:
-        system = sys.platform
+    return system
