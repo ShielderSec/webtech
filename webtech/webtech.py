@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from io import open
 import json
 import random
 try:
@@ -25,7 +26,7 @@ def get_random_user_agent():
     """
     ua_file = os.path.join(os.path.realpath(os.path.dirname(__file__)), "ua.txt")
     try:
-        with open(ua_file) as f:
+        with open(ua_file, 'r', encoding='utf8') as f:
             agents = f.readlines()
             return random.choice(agents).strip()
     except FileNotFoundException as e:
@@ -68,9 +69,9 @@ class WebTech():
 
         self.db = None
         if os.path.isfile(database.WAPPALYZER_DATABASE_FILE):
-            with open(database.WAPPALYZER_DATABASE_FILE, encoding='utf-8') as f:
+            with open(database.WAPPALYZER_DATABASE_FILE, 'r', encoding='utf8') as f:
                 self.db = json.load(f)
-        with open(database.DATABASE_FILE, encoding='utf-8') as f:
+        with open(database.DATABASE_FILE, 'r', encoding='utf8') as f:
             self.db = database.merge_databases(self.db, json.load(f))
 
         # Output text only
@@ -84,7 +85,7 @@ class WebTech():
 
         if options.get('database_file'):
             try:
-                with open(options.get('database_file')) as f:
+                with open(options.get('database_file'), 'r', encoding='utf8') as f:
                     self.db = database.merge_databases(self.db, json.load(f))
             except (FileNotFoundException, ValueError) as e:
                 print(e)
@@ -94,7 +95,7 @@ class WebTech():
 
         if options.get('urls_file'):
             try:
-                with open(options.get('urls_file')) as f:
+                with open(options.get('urls_file'), 'r', encoding='utf8') as f:
                     self.urls = [line.rstrip() for line in f]
             except FileNotFoundException as e:
                 print(e)
