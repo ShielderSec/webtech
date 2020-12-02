@@ -68,9 +68,9 @@ class WebTech():
 
         self.db = None
         if os.path.isfile(database.WAPPALYZER_DATABASE_FILE):
-            with open(database.WAPPALYZER_DATABASE_FILE) as f:
+            with open(database.WAPPALYZER_DATABASE_FILE, encoding='utf-8') as f:
                 self.db = json.load(f)
-        with open(database.DATABASE_FILE) as f:
+        with open(database.DATABASE_FILE, encoding='utf-8') as f:
             self.db = database.merge_databases(self.db, json.load(f))
 
         # Output text only
