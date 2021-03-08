@@ -252,7 +252,7 @@ class Target():
             attr, extra = parse_regex_string(headers[header])
             matches = re.search(attr, content, re.IGNORECASE)
             # Attr is empty for a "generic" tech header
-            if attr is '' or matches is not None:
+            if attr == '' or matches is not None:
                 matched_tech = Tech(name=tech, version=None)
                 # The version extra data is present
                 if extra and 'version' in extra:
@@ -279,7 +279,7 @@ class Target():
             attr, extra = parse_regex_string(meta[m])
             matches = re.search(attr, content, re.IGNORECASE)
             # Attr is empty for a "generic" tech meta
-            if attr is '' or matches is not None:
+            if attr == '' or matches is not None:
                 matched_tech = Tech(name=tech, version=None)
                 # The version extra data is present
                 if extra and 'version' in extra:
@@ -302,7 +302,7 @@ class Target():
             for src in self.data['script']:
                 matches = re.search(attr, src, re.IGNORECASE)
                 # Attr is empty for a "generic" tech meta
-                if attr is '' or matches is not None:
+                if attr == '' or matches is not None:
                     matched_tech = Tech(name=tech, version=None)
                     # The version extra data is present
                     if extra and 'version' in extra:
