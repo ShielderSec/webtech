@@ -56,7 +56,7 @@ class Target():
     """
     This class represents a single Target (from scraping a page, from a response file, from a replayed request or from a JSON request-response exchange)
 
-    The only self attribues MUST be self.data that contains the fetched data and self.report that contains the results from various checks.response
+    The only self attributes MUST be self.data that contains the fetched data and self.report that contains the results from various checks.response
 
     Every function MUST do only 1 action since we are need to parallelize this and all the data must be source-independent
     """
