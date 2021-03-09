@@ -54,13 +54,13 @@ class WebTech():
     # 'website' website for this tech
     # 'icon' icon for this tech (useless)
 
-    # 'headers' check this patter in headers
+    # 'headers' check this pattern in headers
     # 'html' check this regex in html
-    # 'meta' check this patter in meta
+    # 'meta' check this pattern in meta
     # 'js' check this expression in javascript context
-    # 'cookies' check this patter in cookies
+    # 'cookies' check this pattern in cookies
     # 'script' check this pattern in scripts src
-    # 'url' check this patter in url
+    # 'url' check this pattern in url
 
     def __init__(self, options=None):
         if not BURP:
