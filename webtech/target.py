@@ -276,18 +276,23 @@ class Target():
             # filter not-available meta
             if content is None:
                 continue
-            attr, extra = parse_regex_string(meta[m])
-            matches = re.search(attr, content, re.IGNORECASE)
-            # Attr is empty for a "generic" tech meta
-            if attr == '' or matches is not None:
-                matched_tech = Tech(name=tech, version=None)
-                # The version extra data is present
-                if extra and 'version' in extra:
-                    if matches.group(1):
-                        matched_tech = matched_tech._replace(version=matches.group(1))
-                self.report['tech'].add(matched_tech)
-                # this tech is matched, GOTO next
-                return
+            if type(meta[m])==list:
+                strings_to_check=meta[m]
+            else:
+                strings_to_check=[meta[m]]
+            for str_to_check in strings_to_check:
+                attr, extra = parse_regex_string(str_to_check)
+                matches = re.search(attr, content, re.IGNORECASE)
+                # Attr is empty for a "generic" tech meta
+                if attr == '' or matches is not None:
+                    matched_tech = Tech(name=tech, version=None)
+                    # The version extra data is present
+                    if extra and 'version' in extra:
+                        if matches.group(1):
+                            matched_tech = matched_tech._replace(version=matches.group(1))
+                    self.report['tech'].add(matched_tech)
+                    # this tech is matched, GOTO next
+                    continue
 
     def check_script(self, tech, script):
         """
