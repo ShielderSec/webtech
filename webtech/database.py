@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os.path
+from os import unlink
 import time
 from .__burp__ import BURP
 from .utils import user_data_dir
+from string import ascii_lowercase
+import json
 
 if not BURP:
     try:
@@ -21,7 +24,7 @@ else:
         os.mkdir(DATA_DIR)
 DATABASE_FILE = os.path.join(DATA_DIR, "webtech.json")
 WAPPALYZER_DATABASE_FILE = os.path.join(DATA_DIR, "apps.json")
-WAPPALYZER_DATABASE_URL = "https://raw.githubusercontent.com/AliasIO/wappalyzer/master/src/technologies.json"
+WAPPALYZER_DATABASE_URL_BASE = "https://raw.githubusercontent.com/AliasIO/wappalyzer/master/src/technologies/"
 WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/master/webtech/webtech.json"
 DAYS = 60 * 60 * 24
 
@@ -30,54 +33,67 @@ def download_database_file(url, target_file):
     """
     Download the database file from the WAPPPALIZER repository
     """
-    print("Updating database...")
+    print("Downloading database: {}".format(url))
     response = urlopen(url)
     with open(target_file, 'wb') as out_file:
         out_file.write(response.read())
-    print("Database updated successfully!")
 
 
-def download(webfile, dbfile, name, force=False):
+def download():
     """
     Check if outdated and download file
     """
-    now = int(time.time())
-    if not os.path.isfile(dbfile):
-        print("{} Database file not present.".format(name))
-        download_database_file(webfile, dbfile)
-        # set timestamp in filename
-    else:
-        last_update = int(os.path.getmtime(dbfile))
-        if last_update < now - 30 * DAYS or force:
-            if force:
-                print("Force update of {} Database file".format(name))
-            else:
-                print("{} Database file is older than 30 days.".format(name))
-            os.remove(dbfile)
-            download_database_file(webfile, dbfile)
+    try:
+        download_database_file(WEBTECH_DATABASE_URL, DATABASE_FILE)
+    except:
+        pass
+    with open(WAPPALYZER_DATABASE_FILE, 'w') as f:
+        json.dump({"apps":{}}, f)
+    
+    for c in ascii_lowercase + "_":
+        try:
+            download_database_file("{}{}.json".format(WAPPALYZER_DATABASE_URL_BASE,c), os.path.join(DATA_DIR,"temp.json"))
+            merge_partial_wappalyzer_database()
+            unlink(os.path.join(DATA_DIR,"temp.json"))
+        except URLError as e:
+            print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
+            pass
 
 
 def update_database(args=None, force=False):
     """
     Update the database if it's not present or too old
     """
-    try:
-        download(WAPPALYZER_DATABASE_URL, WAPPALYZER_DATABASE_FILE, "Wappalyzer", force=force)
-    except URLError as e:
-        print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
-        pass
+    now = int(time.time())
+    if not os.path.isfile(WAPPALYZER_DATABASE_FILE):
+        print("Database file not present.")
+        download()
+    else:
+        last_update = int(os.path.getmtime(WAPPALYZER_DATABASE_FILE))
+        if last_update < now - 30 * DAYS or force:
+            if force:
+                print("Force update of Database file")
+            else:
+                print("Database file is older than 30 days.")
+            unlink(WAPPALYZER_DATABASE_FILE)
+            download()
+    
 
-    try:
-        download(WEBTECH_DATABASE_URL, DATABASE_FILE, "WebTech", force=force)
-        return True
-    except URLError as e:
-        print("Unable to update database, check your internet connection and Github.com availability.")
-        return False
-
+def merge_partial_wappalyzer_database():
+    """
+    This helper function merges a partial wappalyzer db with the other ones.
+    """
+    
+    with open(WAPPALYZER_DATABASE_FILE, 'r+') as f1:
+        with open(os.path.join(DATA_DIR,"temp.json")) as f2:
+            current = json.load(f1)
+            temp = {"apps": json.load(f2)}
+            f1.seek(0)
+            json.dump(merge_databases(current, temp),f1)
 
 def merge_databases(db1, db2):
     """
-    This helper function merge elements from two databases without overrding its elements
+    This helper function merges elements from two databases without overrding its elements
     This function is not generic and *follow the Wappalyzer db scheme*
     """
     # Wappalyzer DB format must have an apps/technologies object
