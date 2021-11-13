@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import webtech
 
+# make sure to have the latest db version
+webtech.database.update_database(force=True)
+
 # you can use options, same as from the command line
 wt = webtech.WebTech(options={'json': True})
 

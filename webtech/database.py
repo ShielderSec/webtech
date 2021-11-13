@@ -84,8 +84,8 @@ def merge_partial_wappalyzer_database():
     This helper function merges a partial wappalyzer db with the other ones.
     """
     
-    with open(WAPPALYZER_DATABASE_FILE, 'r+') as f1:
-        with open(os.path.join(DATA_DIR,"temp.json")) as f2:
+    with open(WAPPALYZER_DATABASE_FILE, 'r+', encoding='utf-8') as f1:
+        with open(os.path.join(DATA_DIR,"temp.json"), 'r', encoding='utf-8') as f2:
             current = json.load(f1)
             temp = {"apps": json.load(f2)}
             f1.seek(0)
