@@ -15,11 +15,12 @@ if not BURP:
 
     # Disable warning about Insecure SSL
     from requests.packages.urllib3 import disable_warnings
+    from requests.packages.urllib3.util import parse_url
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
     disable_warnings(InsecureRequestWarning)
 
 from . import encoder
-from .utils import ConnectionException, FileNotFoundException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict
+from .utils import ConnectionException, FileNotFoundException, WrongContentTypeException, Format, Tech, caseinsensitive_in, dict_from_caseinsensitivedict
 from .parser import WTParser
 
 # Hacky hack to hack ack. Support python2 and python3 without depending on six
@@ -86,6 +87,7 @@ class Target():
             # Burp flag is set when requests is not installed.
             # When using Burp we shouldn't end up in this function so we are in a Python CLI env without requests
             raise ImportError("Missing Requests module")
+
         # By default we don't verify SSL certificates, we are only performing some useless GETs
         try:
             response = get(url, headers=headers, cookies=cookies, verify=False, allow_redirects=True, timeout=timeout)
@@ -94,6 +96,10 @@ class Target():
         # print("status: {}".format(response.status_code))
 
         # TODO: switch-case for various response.status_code
+
+        ct = response.headers.get('Content-Type', None)
+        if not 'text/html' in ct:
+            raise WrongContentTypeException('{} response use Content-Type "{}" but "text/html" is needed'.format(url, ct))
 
         self.data['url'] = url
         self.data['html'] = response.text

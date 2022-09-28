@@ -12,7 +12,7 @@ except ImportError:  # For Python 3
 
 from .__burp__ import BURP
 from . import database
-from .utils import Format, FileNotFoundException, ConnectionException
+from .utils import Format, FileNotFoundException, ConnectionException, WrongContentTypeException
 from .target import Target
 from .__version__ import __version__ as VERSION
 
@@ -113,6 +113,8 @@ class WebTech():
             # JSON output
             self.output_format = Format['json']
 
+        self.auto_fallback = options.get('auto_fallback')
+
         try:
             self.timeout = int(options.get('timeout', '10'))
         except ValueError:
@@ -123,6 +125,7 @@ class WebTech():
         Start the engine, fetch an URL and report the findings
         """
         self.output = {}
+        self.auto_fallback = True
         for url in self.urls or []:
             try:
                 temp_output = self.start_from_url(url)
@@ -158,7 +161,15 @@ class WebTech():
             # Scrape the URL by making a request
             h = {'User-Agent': self.USER_AGENT}
             h.update(headers)
-            target.scrape_url(url, headers=h, cookies={}, timeout=timeout)
+            try:
+                target.scrape_url(url, headers=h, cookies={}, timeout=timeout)
+            except WrongContentTypeException as e:
+                if self.auto_fallback:
+                    print("Fallback to top level folder since response Content-Type is not text/html")
+                    path = '/' + '/'.join(parsed_url.path.split('/')[:-1])
+                    parsed_url = parsed_url._replace(path=path)
+                    target.scrape_url(parsed_url.geturl(), headers=h, cookies={}, timeout=timeout)
+                else: raise e
         elif "file" in parsed_url.scheme:
             # Load the file and read it
             target.parse_http_file(url)
