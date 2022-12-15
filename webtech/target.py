@@ -98,7 +98,7 @@ class Target():
         # TODO: switch-case for various response.status_code
 
         ct = response.headers.get('Content-Type', None)
-        if not 'text/html' in ct:
+        if ct is None or not 'text/html' in ct:
             raise WrongContentTypeException('{} response use Content-Type "{}" but "text/html" is needed'.format(url, ct))
 
         self.data['url'] = url
