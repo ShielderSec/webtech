@@ -5,15 +5,16 @@ from os import unlink
 import time
 from .__burp__ import BURP
 from .utils import user_data_dir
+from http.client import RemoteDisconnected
 from string import ascii_lowercase
 import json
 
 if not BURP:
     try:
         from urllib.request import urlopen
-        from urllib.error import URLError
+        from urllib.error import URLError, HTTPError
     except ImportError as e:
-        from urllib2 import urlopen, URLError
+        from urllib2 import urlopen, URLError, HTTPError
 
 
 if BURP:
@@ -34,7 +35,7 @@ def download_database_file(url, target_file):
     Download the database file from the WAPPPALIZER repository
     """
     print("Downloading database: {}".format(url))
-    response = urlopen(url)
+    response = urlopen(url, timeout=30)
     with open(target_file, 'wb') as out_file:
         out_file.write(response.read())
 
@@ -49,13 +50,16 @@ def download():
         pass
     with open(WAPPALYZER_DATABASE_FILE, 'w') as f:
         json.dump({"apps":{}}, f)
-    
+
     for c in ascii_lowercase + "_":
         try:
             download_database_file("{}{}.json".format(WAPPALYZER_DATABASE_URL_BASE,c), os.path.join(DATA_DIR,"temp.json"))
             merge_partial_wappalyzer_database()
             unlink(os.path.join(DATA_DIR,"temp.json"))
-        except URLError as e:
+        except (URLError, HTTPError) as e:
+            print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
+            pass
+        except RemoteDisconnected as e:
             print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
             pass
 
@@ -77,13 +81,11 @@ def update_database(args=None, force=False):
                 print("Database file is older than 30 days.")
             unlink(WAPPALYZER_DATABASE_FILE)
             download()
-    
 
 def merge_partial_wappalyzer_database():
     """
     This helper function merges a partial wappalyzer db with the other ones.
     """
-    
     with open(WAPPALYZER_DATABASE_FILE, 'r+', encoding='utf-8') as f1:
         with open(os.path.join(DATA_DIR,"temp.json"), 'r', encoding='utf-8') as f2:
             current = json.load(f1)
