@@ -25,7 +25,7 @@ else:
         os.mkdir(DATA_DIR)
 DATABASE_FILE = os.path.join(DATA_DIR, "webtech.json")
 WAPPALYZER_DATABASE_FILE = os.path.join(DATA_DIR, "apps.json")
-WAPPALYZER_DATABASE_URL_BASE = "https://raw.githubusercontent.com/AliasIO/wappalyzer/master/src/technologies/"
+ENTHEC_WAPPALYZER_DATABASE_URL_BASE = "https://raw.githubusercontent.com/enthec/webappanalyzer/main/src/technologies/"
 WEBTECH_DATABASE_URL = "https://raw.githubusercontent.com/ShielderSec/webtech/master/webtech/webtech.json"
 DAYS = 60 * 60 * 24
 
@@ -53,15 +53,15 @@ def download():
 
     for c in ascii_lowercase + "_":
         try:
-            download_database_file("{}{}.json".format(WAPPALYZER_DATABASE_URL_BASE,c), os.path.join(DATA_DIR,"temp.json"))
+            download_database_file("{}{}.json".format(ENTHEC_WAPPALYZER_DATABASE_URL_BASE,c), os.path.join(DATA_DIR,"temp.json"))
             merge_partial_wappalyzer_database()
             unlink(os.path.join(DATA_DIR,"temp.json"))
         except (URLError, HTTPError) as e:
             print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
-            pass
+            break
         except RemoteDisconnected as e:
             print("The Wappalyzer database seems offline. Report this issue to: https://github.com/ShielderSec/webtech/")
-            pass
+            break
 
 
 def update_database(args=None, force=False):
