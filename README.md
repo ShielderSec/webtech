@@ -46,7 +46,7 @@ Target URL:
 
 Full usage:
 
-```
+```console
 $ webtech -h
 
 Usage: webtech [options]
@@ -70,7 +70,7 @@ Options:
 
 ## Use WebTech as a library
 
-```
+```py
 import webtech
 
 # you can use options, same as from the command line
